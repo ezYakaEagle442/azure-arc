@@ -42,7 +42,30 @@ echo "Project git repo URL : " $git_url_springboot
 
 ```
 
+## Azure Arc
+```sh
+azure_arc_k3s="Azure-Arc-K3S"
+echo "Azure Arc K3S registered Cluster:" $azure_arc_k3s 
 
+azure_arc_aks="Azure-Arc-AKS"
+echo "Azure Arc AKS registered Cluster:" $azure_arc_aks 
+
+azure_arc_aro="Azure-Arc-ARO"
+echo "Azure Arc ARO registered Cluster:" $azure_arc_aro 
+
+azure_arc_gke="Azure-Arc-GKE"
+echo "Azure Arc GKE registered Cluster:" $azure_arc_gke 
+
+azure_arc_aws="Azure-Arc-AWS"
+echo "Azure Arc K8S registered Cluster:" $azure_arc_aws 
+
+azure_arc_minikube="Azure-Arc-MiniKube"
+echo "Azure Arc Minikube registered Cluster:" $azure_arc_minikube 
+
+azure_arc_kind="Azure-Arc-KIND"
+echo "Azure Arc KIND registered Cluster:" $azure_arc_kind 
+
+```
 
 ## K3S
 
