@@ -209,7 +209,7 @@ See [https://docs.openshift.com/aro/4/cli_reference/helm_cli/getting-started-wit
 # https://chocolatey.org/packages/kubernetes-helm
 choco install kubernetes-helm --Yes --confirm --accept-license
 ```
-## How to install HELM on WSL
+## How to install HELM on Ubuntu or WSL
 ```sh
 # https://helm.sh/docs/intro/install/
 # https://git.io/get_helm.sh
@@ -266,16 +266,25 @@ sudo service docker start
 
 ```sh
 # https://kubernetes.io/docs/reference/kubectl/cheatsheet/
+
+# AKS
 source <(kubectl completion bash) # setup autocomplete in bash into the current shell, bash-completion package should be installed first.
 echo "source <(kubectl completion bash)" >> ~/.bashrc 
 alias k=kubectl
 complete -F __start_kubectl k
 
+# ARO
 source <(oc completion bash)
 echo "source <(oc completion bash)" >> ~/.bashrc 
 complete -F __start_oc oc
 
-alias kn='kubectl config set-context --current --namespace '
+# K3S
+alias k="sudo k3s kubectl"
+source <(k completion bash) # setup autocomplete in bash into the current shell, bash-completion package should be installed first.
+echo "source <(k completion bash)" >> ~/.bashrc 
+complete -F __start_kubectl k
+
+alias kn='k config set-context --current --namespace '
 ```
 
 Optionnaly : If you want to run PowerShell
