@@ -62,6 +62,11 @@ echo "K3S Subnet Name :" $k3s_subnet_name
 k3s_admin_username="${appName}-admin"
 echo "K3S admin user-name :" $k3s_admin_username
 
+k3s_lb_pub_ip="pip-${appName}-k3s-lb-pub-IP"
+echo "K3S LB Public IP :" $k3s_lb_pub_ip
+
+k3s_lb="lbe-k3s-${appName}"
+echo "K3S LB name :" $k3s_lb
 
 ```
 
