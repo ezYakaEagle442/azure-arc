@@ -2,9 +2,6 @@
 Azure Arc 101
 ## Introduction
 This is an introduction to play with Azure Arc :
-- 
-- 
-
 
 ## **Disclaimer**
 
@@ -16,9 +13,7 @@ See also :
 - [https://aka.ms/AzureArcK8sDemoGuides](https://aka.ms/AzureArcK8sDemoGuides)
 - [https://github.com/Azure/azure-arc-kubernetes-examples](https://github.com/Azure/azure-arc-kubernetes-examples)
 - [https://github.com/Azure/arc-helm-demo](https://github.com/Azure/arc-helm-demo)
-- []()
 - [https://github.com/Azure/arc-k8s-demo](https://github.com/Azure/arc-k8s-demo)
-- []()
 
 - [https://github.com/likamrat/azure_arc](https://github.com/likamrat/azure_arc)
 - [Install a single node Cluster on Windows 10](https://download.microsoft.com/download/b/8/e/b8ecef54-3612-4883-a73c-6b9f6dd63a61/Install-a-single-node-cluster-of-Kubernetes-on-Windows-10.pdf)
