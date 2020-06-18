@@ -41,7 +41,7 @@ github_usr="<Your Git Hub Account>"
 echo "GitHub user Name : " $github_usr 
 
 # with SSH git@github.com:your-git-home/cluster-config.git or with https://github.com/<!XXXyour-git-homeXXX!/cluster-config.git"
-gitops_url="https://github.com/$github_usr/cluster-config.git"
+gitops_url="https://github.com/$github_usr/arc-k8s-demo.git" # https://github.com/Azure/arc-k8s-demo (was "https://github.com/$github_usr/cluster-config.git )
 echo "GitOps workflow repo URL : " $gitops_url 
 
 gitops_helm_url="https://github.com/Azure/arc-helm-demo.git"

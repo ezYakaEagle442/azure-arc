@@ -237,7 +237,7 @@ k logs -l app.kubernetes.io/component=config-agent -c config-agent -n azure-arc
 ### Create Config for GitOps workflow
 See [https://github.com/Azure/azure-arc-kubernetes-preview/blob/master/docs/use-gitops-in-connected-cluster.md](https://github.com/Azure/azure-arc-kubernetes-preview/blob/master/docs/use-gitops-in-connected-cluster.md)
 
-Fork this [sample repo](https://github.com/slack/cluster-config) into your GitHub account 
+Fork this [sample repo](https://github.com/Azure/arc-k8s-demo) into your GitHub account 
 
 ```sh
 
