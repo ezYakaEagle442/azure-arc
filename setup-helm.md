@@ -40,4 +40,8 @@ helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-i
 helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-identity/master/charts
 helm repo add csi-secrets-store-provider-azure https://raw.githubusercontent.com/Azure/secrets-store-csi-driver-provider-azure/master/charts
 
+# Azure Arc
+helm repo add azurearcfork8s https://azurearcfork8s.azurecr.io/helm/v1/repo
+
+helm repo list
 ```
