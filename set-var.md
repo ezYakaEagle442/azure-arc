@@ -34,16 +34,27 @@ echo "App DNS zone " $app_dns_zone
 custom_dns="akshandsonlabs.com"
 echo "Custom DNS is : " $custom_dns
 
-git_url="https://github.com/your-project/xxx.git"
-echo "Project git repo URL : " $git_url 
-
 git_url_springboot="https://github.com/spring-projects/spring-petclinic.git"
 echo "Project git repo URL : " $git_url_springboot 
+
+github_usr="<Your Git Hub Account>"
+echo "GitHub user Name : " $github_usr 
+
+# with SSH git@github.com:your-git-home/cluster-config.git or with https://github.com/<!XXXyour-git-homeXXX!/cluster-config.git"
+gitops_url="https://github.com/$github_usr/cluster-config.git"
+echo "GitOps workflow repo URL : " $gitops_url 
+
+gitops_helm_url="https://github.com/Azure/arc-helm-demo.git"
+echo "GitOps HELM repo URL : " $gitops_helm_url 
+
+git_url="https://github.com/$github_usr/xxx.git"
+echo "Project git repo URL : " $git_url 
 
 ```
 
 ## Azure Arc
 ```sh
+# naming convention : arck-
 azure_arc_k3s="Azure-Arc-K3S"
 echo "Azure Arc K3S registered Cluster:" $azure_arc_k3s 
 
@@ -64,6 +75,15 @@ echo "Azure Arc Minikube registered Cluster:" $azure_arc_minikube
 
 azure_arc_kind="Azure-Arc-KIND"
 echo "Azure Arc KIND registered Cluster:" $azure_arc_kind 
+
+arc_gitops_namespace="gitops"
+echo "GitOps namespace:" $arc_gitops_namespace
+
+arc_config_name_k3s="k3s-config"
+echo "Azure Arc K8S Config :" $arc_config_name_k3s
+
+arc_operator_instance_name_k3s="k3s-cluster-config"
+echo "Azure Arc Operator instance name :" $arc_operator_instance_name_k3s
 
 ```
 
