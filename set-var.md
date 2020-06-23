@@ -50,6 +50,13 @@ echo "GitOps HELM repo URL : " $gitops_helm_url
 git_url="https://github.com/$github_usr/xxx.git"
 echo "Project git repo URL : " $git_url 
 
+analytics_workspace_name="log-${appName}-azm-analytics"
+echo "Analytics Workspace Name :" $analytics_workspace_name
+
+# RG to share the same analytics workspace for all k8s clusters
+common_rg_name="rg-${appName}-common-${location}" 
+echo "Shared RG name:" $common_rg_name 
+
 ```
 
 ## Azure Arc
@@ -84,6 +91,15 @@ echo "Azure Arc K8S Config :" $arc_config_name_k3s
 
 arc_operator_instance_name_k3s="k3s-cluster-config"
 echo "Azure Arc Operator instance name :" $arc_operator_instance_name_k3s
+
+arc_operator_instance_name_aks="aks-cluster-config"
+echo "Azure Arc Operator instance name for AKS :" $arc_operator_instance_name_aks
+
+arc_operator_instance_name_aro="aro-cluster-config"
+echo "Azure Arc Operator instance name for ARO :" $arc_operator_instance_name_aro
+
+arc_operator_instance_name_gke="gke-cluster-config"
+echo "Azure Arc Operator instance name for GKE :" $arc_operator_instance_name_gke
 
 ```
 

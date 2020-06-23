@@ -32,6 +32,7 @@ az extension update --name k8sconfiguration
 az group create --name $aks_rg_name --location $location
 az group create --name $aro_rg_name --location $location
 az group create --name $k3s_rg_name --location $location
+az group create --name $common_rg_name --location $location
 
 az group create --name rg-cloudshell-$location --location $location
 
@@ -57,12 +58,19 @@ ssh-keygen -t rsa -b 4096 -N $ssh_passphrase -f ~/.ssh/$ssh_key -C "youremail@gr
 
 # Create Service Principal
 
-(You do not need to create SPN when enabling managed-identity on AKS cluster.)
 
+See:
+-  [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/create-onboarding-service-principal](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/create-onboarding-service-principal)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/resource-provider-operations#microsofthybridcompute](https://docs.microsoft.com/en-us/azure/role-based-access-control/resource-provider-operations#microsofthybridcompute)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles)
+
+<span style="text-decoration: underline">Note for AKS</span>: 
 Read [https://docs.microsoft.com/en-us/azure/aks/kubernetes-service-principal](https://docs.microsoft.com/en-us/azure/aks/kubernetes-service-principal)
 [Additional considerations](https://docs.microsoft.com/en-us/azure/aks/kubernetes-service-principal#additional-considerations)
 On the agent node VMs in the Kubernetes cluster, the service principal credentials are stored in the file /etc/kubernetes/azure.json
 When you use the az aks create command to generate the service principal automatically, the service principal credentials are written to the file /aksServicePrincipal.json on the machine used to run the command.
+(You do not need to create SPN when enabling managed-identity on AKS cluster.)
+
 
 ```sh
 sp_password=$(az ad sp create-for-rbac --name $appName --role contributor --query password --output tsv)
@@ -76,6 +84,12 @@ echo "Service Principal ID:" $sp_id
 echo $sp_id > spid.txt
 # sp_id=`cat spid.txt`
 az ad sp show --id $sp_id
+
+az role assignment create \
+    --role 34e09817-6cbe-4d01-b1a2-e0eac5743d41 \
+    --assignee $sp_id \
+    --scope /subscriptions/$subId
+
 ```
 
 # Get a Red Hat pull secret
