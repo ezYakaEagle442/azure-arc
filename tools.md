@@ -285,6 +285,21 @@ echo "source <(k completion bash)" >> ~/.bashrc
 complete -F __start_kubectl k
 
 alias kn='k config set-context --current --namespace '
+
+export gen="--dry-run=client -o yaml"
+# ex: k run nginx --image nginx $gen
+
+# Get K8S resources
+alias kp="k get pods -o wide"
+alias kd="k get deployment -o wide"
+alias ks="k get svc -o wide"
+alias kno="k get nodes -o wide"
+
+# Describe K8S resources 
+alias kdp="k describe pod"
+alias kdd="k describe deployment"
+alias kds="k describe service"
+
 ```
 
 Optionnaly : If you want to run PowerShell
@@ -307,7 +322,7 @@ See [vim cheatsheet](https://devhints.io/vim)
 # sw stands for shiftwidth. Number of spaces used during indentation > or <
 # set et : et stands for expandtab. While in insert mode, it replaces tabs by spaces
 vi ~/.vimrc
-set ts=2 sts=2 sw=2 et
+set ts=2 sw=2 et sts=2
 . ~/.vimrc
 ```
 
