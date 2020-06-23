@@ -9,6 +9,7 @@ This is an introduction to play with Azure Arc :
 
 See also :
 
+- [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/overview](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/overview)
 - [https://azure.microsoft.com/en-us/resources/videos/kubernetes-app-management-with-azure-arc](https://azure.microsoft.com/en-us/resources/videos/kubernetes-app-management-with-azure-arc)
 - [https://aka.ms/AzureArcK8sDemoGuides](https://aka.ms/AzureArcK8sDemoGuides)
 - [https://github.com/Azure/azure-arc-kubernetes-examples](https://github.com/Azure/azure-arc-kubernetes-examples)
@@ -28,4 +29,5 @@ See also :
 1. Setup [K3S cluster](setup-k3s.md)
 1. Setup [AKS cluster](setup-aks.md)
 1. Setup [ARO cluster](setup-aro.md)
+1. Setup [GKE cluster](setup-gke.md)
 1. Setup [HELM](setup-helm.md)
