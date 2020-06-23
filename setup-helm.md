@@ -43,5 +43,8 @@ helm repo add csi-secrets-store-provider-azure https://raw.githubusercontent.com
 # Azure Arc
 helm repo add azurearcfork8s https://azurearcfork8s.azurecr.io/helm/v1/repo
 
-helm repo list
+# HELM Operator: https://docs.fluxcd.io/projects/helm-operator/en/stable/references/chart/#installation
+helm repo add fluxcd https://charts.fluxcd.io
+
+helm repo ls
 ```
