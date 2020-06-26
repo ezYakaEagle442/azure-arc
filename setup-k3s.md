@@ -20,7 +20,12 @@ az network nsg rule create --access Allow --destination-port-range 80 --source-a
 
 az network nsg rule create --access Allow --destination-port-range 8080 --source-address-prefixes Internet --name "Allow 8080 from Internet" --nsg-name $k3s_nsg -g $k3s_rg_name --priority 130
 
-az network vnet subnet update --name ManagementSubnet --network-security-group $k3s_nsg --vnet-name $k3s_vnet_name -g $k3s_rg_name
+az network nsg rule create --access Allow --destination-port-range 32380 --source-address-prefixes Internet --name "Allow 32380 from Internet" --nsg-name $k3s_nsg -g $k3s_rg_name --priority 140
+
+az network nsg rule create --access Allow --destination-port-range 32333 --source-address-prefixes Internet --name "Allow 32333 from Internet" --nsg-name $k3s_nsg -g $k3s_rg_name --priority 150
+
+az network vnet subnet update --name $k3s_subnet_name --network-security-group $k3s_nsg --vnet-name $k3s_vnet_name -g $k3s_rg_name
+
 
 ```
 
@@ -46,7 +51,7 @@ az network lb create \
 az network lb probe create \
 --resource-group $k3s_rg_name \
 --lb-name $k3s_lb \
---name k3sHealthProbe \
+--name k3sHealthProbe-80 \
 --protocol tcp \
 --port 80
 
@@ -59,7 +64,14 @@ az network lb rule create \
 --backend-port 80 \
 --frontend-ip-name k3sFrontEnd \
 --backend-pool-name k3sBackEndPool \
---probe-name k3sHealthProbe
+--probe-name k3sHealthProbe-80
+
+az network lb probe create \
+--resource-group $k3s_rg_name \
+--lb-name $k3s_lb \
+--name k3sHealthProbe-443 \
+--protocol tcp \
+--port 443
 
 az network lb rule create \
 --resource-group $k3s_rg_name \
@@ -70,7 +82,14 @@ az network lb rule create \
 --backend-port 443 \
 --frontend-ip-name k3sFrontEnd \
 --backend-pool-name k3sBackEndPool \
---probe-name k3sHealthProbe
+--probe-name k3sHealthProbe-443
+
+az network lb probe create \
+--resource-group $k3s_rg_name \
+--lb-name $k3s_lb \
+--name k3sHealthProbe-6443 \
+--protocol tcp \
+--port 6443
 
 az network lb rule create \
 --resource-group $k3s_rg_name \
@@ -81,8 +100,43 @@ az network lb rule create \
 --backend-port 6443 \
 --frontend-ip-name k3sFrontEnd \
 --backend-pool-name k3sBackEndPool \
---probe-name k3sHealthProbe
+--probe-name k3sHealthProbe-6443
 
+az network lb probe create \
+--resource-group $k3s_rg_name \
+--lb-name $k3s_lb \
+--name k3sHealthProbe-32380 \
+--protocol tcp \
+--port 32380
+
+az network lb rule create \
+--resource-group $k3s_rg_name \
+--lb-name $k3s_lb \
+--name k3s-32380 \
+--protocol tcp \
+--frontend-port 32380 \
+--backend-port 32380 \
+--frontend-ip-name k3sFrontEnd \
+--backend-pool-name k3sBackEndPool \
+--probe-name k3sHealthProbe-32380
+
+az network lb probe create \
+--resource-group $k3s_rg_name \
+--lb-name $k3s_lb \
+--name k3sHealthProbe-32333 \
+--protocol tcp \
+--port 32333
+
+az network lb rule create \
+--resource-group $k3s_rg_name \
+--lb-name $k3s_lb \
+--name k3s-32333 \
+--protocol tcp \
+--frontend-port 32333 \
+--backend-port 32333 \
+--frontend-ip-name k3sFrontEnd \
+--backend-pool-name k3sBackEndPool \
+--probe-name k3sHealthProbe-32333
 
 ```
 
@@ -90,19 +144,28 @@ az network lb rule create \
 
 ```sh
 
-az network nic create --name nic-k3s --vnet-name $k3s_vnet_name --subnet $k3s_subnet_name --network-security-group $k3s_nsg --public-ip-address $k3s_lb_pub_ip --lb-name $k3s_lb --lb-address-pools k3sBackEndPool -g $k3s_rg_name
+az network public-ip create --resource-group $k3s_rg_name --name $k3s_vm_pub_ip --sku "Standard"
 
+k3s_vm_pub_ip_id=$(az network public-ip show -n $k3s_vm_pub_ip -g $k3s_rg_name --query "id" -o tsv)
+echo "k3s_vm_pub_ip_id " $k3s_vm_pub_ip_id
+
+k3s_vm_pub_ip_address=$(az network public-ip show -n $k3s_vm_pub_ip -g $k3s_rg_name --query "ipAddress" -o tsv)
+echo "k3s_vm_pub_ip_address" $k3s_vm_pub_ip_address
+
+az network nic create --name $k3s_vm_name-nic --vnet-name $k3s_vnet_name --subnet $k3s_subnet_name --network-security-group $k3s_nsg --public-ip-address $k3s_vm_pub_ip --lb-name $k3s_lb --lb-address-pools k3sBackEndPool -g $k3s_rg_name
+
+# When specifying an existing NIC, do not specify NSG, public IP, ASGs, VNet or subnet
 az vm create --name $k3s_vm_name \
     --image UbuntuLTS \
     --admin-username $k3s_admin_username \
+    --nics $k3s_vm_name-nic \
     --resource-group $k3s_rg_name \
-    --vnet-name $k3s_vnet_name \
-    --subnet $k3s_subnet_name \
-    --nics nic-k3s \
-    --nsg $k3s_nsg \
     --size Standard_B2s \
     --location $location \
     --ssh-key-values ~/.ssh/$ssh_key.pub
+    # --vnet-name $k3s_vnet_name \
+    # --subnet $k3s_subnet_name \
+    # --nsg $k3s_nsg \
 
 k3s_network_interface_id=$(az vm show --name $k3s_vm_name -g $k3s_rg_name --query 'networkProfile.networkInterfaces[0].id' -o tsv)
 echo "Bastion VM Network Interface ID :" $k3s_network_interface_id
@@ -122,7 +185,7 @@ ssh -i ~/.ssh/$ssh_key $k3s_admin_username@$k3s_network_interface_pub_ip
 
 sudo apt update
 sudo apt upgrade
-sudo apt  install jq
+sudo apt install jq
 
 ```
 [Install AZ CLI in VM](tools.md)
@@ -136,12 +199,16 @@ sudo apt  install jq
 # Installing k3s to /usr/local/bin/k3s
 curl -sfL https://get.k3s.io | sh -
 # wget -q -O - https://raw.githubusercontent.com/rancher/k3s/master/install.sh | sh -
-sudo service k3s status
+service k3s status
 k3s --version
 
 sudo ls -al /usr/local/bin/k3s
 
 # A kubeconfig file is written to /etc/rancher/k3s/k3s.yaml
+# https://github.com/rancher/k3s/issues/1126
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+ls -al /etc/rancher/k3s/k3s.yaml
+sudo chmod 744 /etc/rancher/k3s/k3s.yaml
 
 k3s help
 
@@ -176,12 +243,21 @@ echo "K3S PWD " $k3s_pwd
 # curl -k https://localhost:6443/api/v1/namespaces -H "Authorization: Bearer $token_secret_value" -H 'Accept: application/json'
 curl -k https://localhost:6443/api/v1/namespaces  --user $k3s_usr:$k3s_pwd -H 'Accept: application/json'
 
-# export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+sudo cat /etc/rancher/k3s/k3s.yaml
+echo "Now please Update the server: with the external URL of the Load Balancer "
+echo "replacing server: https://127.0.0.1:6443 "
+echo "with server: https://k3s."${k3s_lb_pub_ip_address}".xip.io:6443 "
+
+sudo vim /etc/rancher/k3s/k3s.yaml
+
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 sudo cp /etc/rancher/k3s/k3s.yaml /home/$k3s_admin_username/.kube/config
 
 sudo chown $k3s_admin_username:$k3s_admin_username /home/$k3s_admin_username/.kube/config
+sudo chown $k3s_admin_username:$k3s_admin_username /home/$k3s_admin_username/.kube
 ls -al /home/$k3s_admin_username/.kube
-export KUBECONFIG=/home/$k3s_admin_username/.kube/config
+cat /home/$k3s_admin_username/.kube/config
+chmod 744 /home/$k3s_admin_username/.kube/config
 
 helm ls -A
 
@@ -238,11 +314,15 @@ Traefik is the (default) Ingress controller for k3s and uses port 80. To test ex
 Since port 80 is taken by Traefik (read more about here), the deployment LoadBalancer was changed to use port **32380** along side with the matching Azure Network Security Group (NSG).
 
 ```sh
-k apply -f app/hello hello-kubernetes.yaml
+git clone https://github.com/ezYakaEagle442/azure-arc
+
+k apply -f ./app/hello-kubernetes.yaml
 hello_svc_cluster_ip=$(k get svc hello-kubernetes -o=custom-columns=":spec.clusterIP")
 curl http://$hello_svc_cluster_ip:32380
 
-echo "Test from your browser : http://$k3s_network_interface_pub_ip/hello-kubernetes "
+hello_svc_lb_ip=$(k get svc/hello-kubernetes -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
+curl http://$hello_svc_lb_ip:32380
+echo "Test from your browser : http://$k3s_lb_pub_ip_address:32380/hello-kubernetes"
 
 
 k get deploy
@@ -259,7 +339,7 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/connect-cluster
 azure_arc_ns="azure-arc"
 
 # Deploy Azure Arc Agents for Kubernetes using Helm 3, into the azure-arc namespace
-az connectedk8s connect --name $azure_arc_k3s  -l $location -g $k3s_rg_name
+az connectedk8s connect --name $azure_arc_k3s -l $location -g $k3s_rg_name
 k get crds
 k get azureclusteridentityrequests.clusterconfig.azure.com -n $azure_arc_ns
 k describe azureclusteridentityrequests.clusterconfig.azure.com config-agent-identity-request -n $azure_arc_ns
@@ -268,12 +348,16 @@ k get connectedclusters.arc.azure.com -n $azure_arc_ns
 k describe connectedclusters.arc.azure.com clustermetadata -n $azure_arc_ns
 
 # verify
-az connectedk8s list -g $k3s_rg_name -o table # -c $azure_arc_k3s --cluster-type connectedClusters 
+az connectedk8s list -g $k3s_rg_name -o table # -c $azure_arc_k3s --cluster-type connectedClusters
+
+# -o tsv is MANDATORY to remove quotes
+azure_arc_k3s_id=$(az connectedk8s show --name $azure_arc_k3s -g $k3s_rg_name -o tsv --query id)
+
 helm status azure-arc --namespace default 
 
 # Azure Arc enabled Kubernetes deploys a few operators into the azure-arc namespace. You can view these deployments and pods here:
 k get deploy,po -n $azure_arc_ns 
-k get po -o=custom-columns=':metadata.name' -n $azure_arc_ns
+k get po -o=custom-columns=':.metadata.name' -n $azure_arc_ns
 k get po -l app.kubernetes.io/component=connect-agent -n $azure_arc_ns
 k get po -l app.kubernetes.io/component=config-agent -n $azure_arc_ns
 k get po -l app.kubernetes.io/component=flux-logs-agent -n $azure_arc_ns
@@ -310,12 +394,16 @@ az k8sconfiguration create --name $arc_config_name_k3s --cluster-name $azure_arc
 az k8sconfiguration list --cluster-name $azure_arc_k3s -g $k3s_rg_name --cluster-type connectedClusters
 az k8sconfiguration show --cluster-name $azure_arc_k3s --name $arc_config_name_k3s -g $k3s_rg_name --cluster-type connectedClusters
 
+repositoryPublicKey=$(az k8sconfiguration show --cluster-name $azure_arc_k3s --name $arc_config_name_k3s -g $k3s_rg_name --cluster-type connectedClusters --query 'repositoryPublicKey')
+echo "repositoryPublicKey : " $repositoryPublicKey
+echo "Add this Public Key to your GitHub Project Deploy Key and allow write access at https://github.com/$github_usr/arc-k8s-demo/settings/keys"
+
 # notices the new Pending configuration
 complianceState=$(az k8sconfiguration show --cluster-name $azure_arc_k3s --name $arc_config_name_k3s -g $k3s_rg_name --cluster-type connectedClusters --query 'complianceStatus.complianceState')
 echo "Compliance State " : $complianceState
 
-k get gitconfigs.clusterconfig.azure.com -n $arc_gitops_namespace
-k describe gitconfigs.clusterconfig.azure.com -n $arc_gitops_namespace
+git_config=$(k get gitconfigs.clusterconfig.azure.com -n $arc_gitops_namespace -o jsonpath={.items[0].metadata.name})
+k describe gitconfigs.clusterconfig.azure.com $git_config -n $arc_gitops_namespace
 
 # https://kubernetes.io/docs/concepts/extend-kubernetes/operator
 # https://github.com/fluxcd/helm-operator/blob/master/chart/helm-operator/CHANGELOG.md#060-2020-01-26
@@ -372,7 +460,7 @@ k get po -n prod
 k get svc/azure-vote-front -n prod
 azure_vote_front_url=$(k get svc/azure-vote-front -n prod -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
 # Find the external IP address from the output above and open it in a browser.
-echo "Open your brower to test the App at $azure_vote_front_url"
+echo "Open your brower to test the App at http://$azure_vote_front_url"
 
 ```
 
@@ -391,19 +479,19 @@ Other option you can use CLI to apply this policy running the snippet below.
 ```sh
 Assure-GitOps-endpoint-for-Kubernetes-cluster.json
 
-az policy definition create --name 
-                            [--description]
-                            [--display-name]
+az policy definition create --name "k3s-gitops-enforcement"
+                            --description "Ensure to deploy GitOps to Kubernetes cluster"
+                            --display-name "k3s-gitops-enforcement"
                             [--management-group]
                             [--metadata]
                             [--mode]
-                            [--params]
+                            --params --git-poll-interval=1m
                             [--rules]
                             [--subscription]
 
+az policy assignment list -g $k3s_rg_name
+gitOpsAssignmentId=$(az policy assignment show --name "k3s-gitops-enforcement -g $k3s_rg_name --query id)
 
-# Create a remediation for a specific assignment
-Start-AzPolicyRemediation -Name 'myRemedation' -PolicyAssignmentId '/subscriptions/${subId}/providers/Microsoft.Authorization/policyAssignments/{myAssignmentId}'
 
 ```
 
@@ -435,13 +523,18 @@ export analytics_workspace_id=$(az monitor log-analytics workspace show -n $anal
 echo "analytics_workspace_id:" $analytics_workspace_id
 
 curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
-export azureArc_K3S_ClusterResourceId=$(az connectedk8s show -g $k3s_rg_name --name $azure_arc_k3s --query id)
+
+# https://github.com/Azure/azure-cli/issues/8401 --query id ==> -o tsv is NECESSARY
+export azureArc_K3S_ClusterResourceId=$(az connectedk8s show -g $k3s_rg_name --name $azure_arc_k3s --query id -o tsv)
 
 k config view --minify
 k config get-contexts
 k config rename-context default k3s-default
 export kubeContext="k3s-default" #"<kubeContext name of your k8s cluster>"
 
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+helm ls --kube-context k3s-default -v=10
+# if the above test fails the enable-monitoring.sh script will fails as well ...
 bash enable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
 
 ```
@@ -454,15 +547,124 @@ Verify :
 ### Clean-Up
 ```sh
 curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
-bash disable-monitoring.sh --resource-id $azureArcClusterResourceId # --kube-context $kubeContext
+bash disable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --kube-context $kubeContext
 ```
 
 ## Manage Kubernetes policy within a connected cluster with Azure Policy for Kubernetes
 
-See [https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json](https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json)
+See also :
+- [https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json](https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json)
+- [https://docs.microsoft.com/en-us/azure/governance/policy/concepts/rego-for-aks?](https://docs.microsoft.com/en-us/azure/governance/policy/concepts/rego-for-aks?)
+- [https://docs.microsoft.com/en-us/azure/security-center/security-center-permissions](https://docs.microsoft.com/en-us/azure/security-center/security-center-permissions)
+- [https://docs.microsoft.com/en-us/azure/governance/policy/how-to/programmatically-create](https://docs.microsoft.com/en-us/azure/governance/policy/how-to/programmatically-create)
+- [https://docs.microsoft.com/en-us/azure/security-center/security-center-permissions](https://docs.microsoft.com/en-us/azure/security-center/security-center-permissions)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#security-admin](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#security-admin)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#resource-policy-contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#resource-policy-contributor)
+- [https://github.com/Azure/Community-Policy/tree/master/Policies/KubernetesService/append-aks-api-ip-restrictions](https://github.com/Azure/Community-Policy/tree/master/Policies/KubernetesService/append-aks-api-ip-restrictions)
+- [https://docs.microsoft.com/en-us/azure/governance/policy/samples/built-in-policies#kubernetes](https://docs.microsoft.com/en-us/azure/governance/policy/samples/built-in-policies#kubernetes)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#policy-insights-data-writer-preview](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#policy-insights-data-writer-preview)
+
+The Kubernetes cluster must be version 1.14 or higher.
 
 ```sh
+tenantId=$(az account show --query tenantId -o tsv)
 
+az policy definition list | grep -i "kubernetes" | grep "displayName"
+
+# https://docs.microsoft.com/en-us/cli/azure/role/definition?view=azure-cli-latest#az-role-definition-list
+az role definition list | grep -i "Policy Insights Data Writer"  
+
+# https://github.com/MicrosoftDocs/azure-docs/issues/57961
+az_policy_sp_password=$(az ad sp create-for-rbac --name $appName-k3s --role "Policy Insights Data Writer (Preview)" --scopes $azure_arc_k3s_id --query password --output tsv)
+
+echo $az_policy_sp_password > az_policy_sp_password.txt
+echo "Azure Policy Service Principal Password saved to ./az_policy_sp_password.txt IMPORTANT Keep your password ..." 
+# az_policy_sp_password=`cat az_policy_sp_password.txt`
+az_policy_sp_id=$(az ad sp show --id http://$appName-k3s --query appId -o tsv)
+#az_policy_sp_id=$(az ad sp list --all --query "[?appDisplayName=='${appName-k3s}'].{appId:appId}" --output tsv)
+#az_policy_sp_id=$(az ad sp list --show-mine --query "[?appDisplayName=='${appName-k3s}'].{appId:appId}" --output tsv)
+echo "Azure Policy Service Principal ID:" $az_policy_sp_id 
+echo $az_policy_sp_id > az_policy_sp_id.txt
+# az_policy_sp_id=`cat az_policy_sp_id.txt`
+az ad sp show --id $az_policy_sp_id
+
+# Policy Insights Data Writer : Role-ID 66bb4e9e-b016-4a94-8249-4c0511c2be84
+# az role assignment create \
+#     --role 66bb4e9e-b016-4a94-8249-4c0511c2be84 \
+#     --assignee $az_policy_sp_id \
+#    --scope /subscriptions/$subId
+
+helm search repo azure-policy
+
+# In below command, replace the following values with those gathered above.
+#    <AzureArcClusterResourceId> with your Azure Arc enabled Kubernetes cluster resource Id. For example: /subscriptions/<subscriptionId>/resourceGroups/<rg>/providers/Microsoft.Kubernetes/connectedClusters/<clusterName>
+#    <ServicePrincipalAppId> with app Id of the service principal created during prerequisites.
+#    <ServicePrincipalPassword> with password of the service principal created during prerequisites.
+#    <ServicePrincipalTenantId> with tenant of the service principal created during prerequisites.
+helm install azure-policy-addon azure-policy/azure-policy-addon-arc-clusters \
+    --set azurepolicy.env.resourceid=$azureArc_K3S_ClusterResourceId \
+    --set azurepolicy.env.clientid=$az_policy_sp_id \
+    --set azurepolicy.env.clientsecret=$az_policy_sp_password \
+    --set azurepolicy.env.tenantid=$tenantId
+
+helm ls
+# azure-policy pod is installed in kube-system namespace
+k get pods -n kube-system
+
+# gatekeeper pod is installed in gatekeeper-system namespace
+k get pods -n gatekeeper-system
+
+# Get the Azure-Policy pod name installed in kube-system namespace
+# -l app=azure-policy-webhook 
+for pod in $(k get po -l app=azure-policy -n kube-system -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"="^azure-policy.*" ]]
+    then
+      echo "Verifying Azure-Policy Pod $pod"
+      # k describe pod $pod -n kube-system
+      k logs $pod -n kube-system # | grep -i "Error"
+      # k exec $pod -n kube-system -it -- /bin/sh
+  fi
+done
+
+# Get the GateKeeper pod name installed in gatekeeper-system namespace
+for pod in $(k get po -l gatekeeper.sh/system=yes -n gatekeeper-system -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"="^gatekeeper.*" ]]
+    then
+      echo "Verifying GateKeeper Pod $pod"
+      # k describe pod $pod -n gatekeeper-system
+      k logs $pod -n gatekeeper-system  | grep -i "Error"
+      # k exec $pod -n gatekeeper-system -it -- /bin/sh
+  fi
+done
+
+```
+[Assign a built-in policy definition](https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json#assign-a-built-in-policy-definition)
+
+Wait for 20  minutes (Azure Policy refreshes on a 15 minute cycle) and check the logs :
+
+```sh
+for pod in $(k get po -l app=azure-policy -n kube-system -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"="^azure-policy.*" ]]
+    then
+      echo "Verifying Azure-Policy Pod $pod"
+      k logs $pod -n kube-system # | grep -i "Error"
+  fi
+done
+
+for pod in $(k get po -l gatekeeper.sh/system=yes -n gatekeeper-system -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"="^gatekeeper.*" ]]
+    then
+      echo "Verifying GateKeeper Pod $pod"
+      k logs $pod -n gatekeeper-system  # | grep -i "Error"
+  fi
+done
+
+# Try to deploy a "bad" Pod
+k apply -f app/root-pod.yaml
 ```
 
 ## IoT Edge workloads integration
@@ -476,3 +678,22 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/deploy-azure-io
 ## Troubleshooting
 
 See [Azure Arc doc](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/troubleshooting)
+
+# Clean-Up
+
+helm uninstall azure-policy-addon
+
+az k8sconfiguration delete --name "$arc_config_name_k3s-azure-voting-app" --cluster-name $azure_arc_k3s --cluster-type connectedClusters -g $k3s_rg_name
+az k8sconfiguration delete --name $arc_config_name_k3s --cluster-name $azure_arc_k3s --cluster-type connectedClusters -g $k3s_rg_name
+
+az policy definition delete --name "k3s-gitops-enforcement"
+
+az connectedk8s delete --name $azure_arc_k3s -g $k3s_rg_name
+
+az vm delete --name $k3s_vm_name -g $k3s_rg_name -y
+az network nic delete --name nic-k3s -g $k3s_rg_name
+
+az network lb delete --name $k3s_lb 
+az network public-ip delete --name $k3s_lb_pub_ip -g $k3s_rg_name
+
+az network vnet subnet update --name $k3s_subnet_name --vnet-name $k3s_vnet_name --network-security-group "" -g $k3s_rg_name
