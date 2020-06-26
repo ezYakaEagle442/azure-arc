@@ -87,7 +87,16 @@ arc_gitops_namespace="gitops"
 echo "GitOps namespace:" $arc_gitops_namespace
 
 arc_config_name_k3s="k3s-config"
-echo "Azure Arc K8S Config :" $arc_config_name_k3s
+echo "Azure Arc K3S Config :" $arc_config_name_k3s
+
+arc_config_name_gke="gke-config"
+echo "Azure Arc GKE Config :" $arc_config_name_gke
+
+arc_config_name_aks="aks-config"
+echo "Azure Arc AKS Config :" $arc_config_name_aks
+
+arc_config_name_aro="aro-config"
+echo "Azure Arc ARO Config :" $aro_config_name_aro
 
 arc_operator_instance_name_k3s="k3s-cluster-config"
 echo "Azure Arc Operator instance name :" $arc_operator_instance_name_k3s
@@ -124,6 +133,9 @@ echo "K3S admin user-name :" $k3s_admin_username
 k3s_lb_pub_ip="pip-${appName}-k3s-lb-pub-IP"
 echo "K3S LB Public IP :" $k3s_lb_pub_ip
 
+k3s_vm_pub_ip="pip-${appName}-k3s-vm-pub-IP"
+echo "K3S VM Public IP :" $k3s_vm_pub_ip
+
 k3s_lb="lbe-k3s-${appName}"
 echo "K3S LB name :" $k3s_lb
 
@@ -138,6 +150,7 @@ aks_rg_name="rg-${appName}-aks-${location}"
 echo "AKS RG name:" $aks_rg_name 
 
 # target : version 1.17.4
+# az aks get-versions --location $location --query '(orchestrators[?isPreview==null].orchestratorVersion)[-2]' -o tsv
 aks_version=$(az aks get-versions -l $location --query 'orchestrators[-4].orchestratorVersion' -o tsv) 
 echo "AKS version is :" $aks_version 
 
@@ -166,9 +179,6 @@ acr_registry_name="acr${appName,,}"
 echo "ACR registry Name :" $acr_registry_name
 
 ```
-
-
-
 
 ## ARO
 
@@ -207,6 +217,23 @@ echo "ARO admin user-name :" $aro_admin_username
 
 ```
 
+## GKE
+
+```sh
+
+gke_rg_name="rg-${appName}-gke-${location}" 
+echo "GKE RG name:" $gke_rg_name 
+
+GKE_ACCOUNT="youremail@groland.grd"
+echo "GKE account :" $GKE_ACCOUNT
+
+GKE_PROJECT="gke-enabled-with-azure-arc"
+echo "GKE Project :" $GKE_PROJECT
+
+GKE_ZONE="europe-west4"
+echo "GKE Zone :" $GKE_ZONE
+
+```
 
 ## Extra variables
 Note: The here under variables are built based on the varibales defined above, you should not need to modify them, just run this snippet
