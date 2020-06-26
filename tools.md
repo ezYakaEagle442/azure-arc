@@ -217,6 +217,8 @@ choco install kubernetes-helm --Yes --confirm --accept-license
 curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
 chmod 700 get_helm.sh
 ./get_helm.sh
+
+helm version
 ```
 
 ## Kubectl-Windows-Linux-Shell
@@ -260,6 +262,41 @@ sudo cgroupfs-mount
 sudo usermod -aG docker $USER
 sudo service docker start
 
+```
+
+## Install GCloud on Linux
+
+See :
+- [Google SDK doc](https://cloud.google.com/sdk/docs/downloads-versioned-archives)
+- [Google regions-zones](https://cloud.google.com/compute/docs/regions-zones#available)
+- [Google Cloud account creation](https://cloud.google.com/free)
+```sh
+getconf LONG_BIT
+cd
+wget https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-298.0.0-linux-x86_64.tar.gz
+tar xzf google-cloud-sdk-298.0.0-linux-x86_64.tar.gz
+rm google-cloud-sdk-298.0.0-linux-x86_64.tar.gz
+./google-cloud-sdk/install.sh
+. .bashrc
+
+# gcloud components install kubectl
+gcloud components update
+
+sudo chown usrXXX:grpXXX /home/$USER/.config/gcloud/config_sentinel
+sudo chown usrXXX:grpXXX /home/$USER/.config/gcloud/gce
+gcloud help
+
+```
+## Install GCloud on windows
+
+See :
+- [Google SDK doc](https://cloud.google.com/sdk/docs/downloads-versioned-archives)
+- [Google regions-zones](https://cloud.google.com/compute/docs/regions-zones#available)
+- [Google Cloud account creation](https://cloud.google.com/free)
+
+```sh
+https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-298.0.0-windows-x86_64-bundled-python.zip
+.\google-cloud-sdk\install.bat
 ```
 
 ## Kube Tools
