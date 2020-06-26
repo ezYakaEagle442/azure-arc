@@ -46,5 +46,8 @@ helm repo add azurearcfork8s https://azurearcfork8s.azurecr.io/helm/v1/repo
 # HELM Operator: https://docs.fluxcd.io/projects/helm-operator/en/stable/references/chart/#installation
 helm repo add fluxcd https://charts.fluxcd.io
 
+# Azure Policy
+helm repo add azure-policy https://raw.githubusercontent.com/Azure/azure-policy/master/extensions/policy-addon-kubernetes/helm-charts
+
 helm repo ls
 ```
