@@ -20,6 +20,8 @@ See also :
 - [Install a single node Cluster on Windows 10](https://download.microsoft.com/download/b/8/e/b8ecef54-3612-4883-a73c-6b9f6dd63a61/Install-a-single-node-cluster-of-Kubernetes-on-Windows-10.pdf)
 
 
+![Azure Arc](./img/Azure_Arc.png)
+
 ## ToC
 
 1. Setup [Tools](tools.md)
