@@ -10,6 +10,11 @@ az provider register --namespace Microsoft.Kubernetes
 az provider register --namespace Microsoft.KubernetesConfiguration
 az provider show -n Microsoft.Kubernetes --query  "resourceTypes[?resourceType == 'connectedClusters']".locations 
 az provider show -n Microsoft.KubernetesConfiguration -o table
+
+# Provider register: Register the Azure Policy provider: https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json
+az provider register --namespace 'Microsoft.PolicyInsights'
+
+
 ```
 
 
@@ -33,6 +38,7 @@ az group create --name $aks_rg_name --location $location
 az group create --name $aro_rg_name --location $location
 az group create --name $k3s_rg_name --location $location
 az group create --name $common_rg_name --location $location
+az group create --name $gke_rg_name --location $location
 
 az group create --name rg-cloudshell-$location --location $location
 
@@ -63,7 +69,7 @@ See:
 -  [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/create-onboarding-service-principal](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/create-onboarding-service-principal)
 - [https://docs.microsoft.com/en-us/azure/role-based-access-control/resource-provider-operations#microsofthybridcompute](https://docs.microsoft.com/en-us/azure/role-based-access-control/resource-provider-operations#microsofthybridcompute)
 - [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles)
-
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#policy-insights-data-writer-preview](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#policy-insights-data-writer-preview)
 <span style="text-decoration: underline">Note for AKS</span>: 
 Read [https://docs.microsoft.com/en-us/azure/aks/kubernetes-service-principal](https://docs.microsoft.com/en-us/azure/aks/kubernetes-service-principal)
 [Additional considerations](https://docs.microsoft.com/en-us/azure/aks/kubernetes-service-principal#additional-considerations)
