@@ -1,0 +1,33 @@
+# docker build --build-arg MSG="Hello Pinpin!" --no-cache -t "rootdemo-alpine:dev" -f "Dockerfile_root-demo" .
+
+FROM alpine
+MAINTAINER pinpin <pinpin@microsoft.com>
+LABEL Description="Pod running as root demo"
+USER root
+VOLUME /tmp
+ARG MSG="Hello World !"
+
+RUN USERNAME=`whoami`
+RUN echo "USERNAME : " $USERNAME
+RUN echo "USER : " $USER
+RUN ls /
+RUN touch /foo.txt
+RUN uname -a
+
+# RUN ip addr show eth0 | grep inet
+# RUN ifconfig -a
+# RUN hostname -i
+RUN apk add curl
+RUN curl icanhazip.com
+# RUN host myip.opendns.com resolver1.opendns.com | grep "myip.opendns.com has address"
+# myip=$(dig + short myip.opendns.com @resolver1.opendns.com)
+
+RUN echo $MSG
+EXPOSE 8042
+ENTRYPOINT ["sh"]
+
+# docker image tag rootdemo-alpine:dev pinpindock/rootdemo-alpine:dev
+# docker image ls
+# docker run -it rootdemo-alpine:dev
+# docker image push pinpindock/rootdemo-alpine:dev
+# docker pull pinpindock/rootdemo-alpine:dev
