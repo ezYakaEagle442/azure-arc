@@ -436,6 +436,7 @@ az policy definition create --name "aro-gitops-enforcement"
                             [--subscription]
 
 az policy assignment list -g $aro_rg_name
+az policy assignment list -g $aro_rg_name
 gitOpsAssignmentId=$(az policy assignment show --name xxx -g $aro_rg_name --query id)
 
 # Create a remediation for a specific assignment
@@ -645,14 +646,25 @@ See [Azure Arc doc](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/
 
 # Clean-Up
 ```sh
+
+export KUBECONFIG=~/.kube/config
+aro_ctx=$(sudo cat $KUBECONFIG | grep -i "name: default")
+ctx_length=$(echo -e $aro_ctx | wc -c)
+export kubeContext="${aro_ctx:8:$ctx_length}"
+
 helm uninstall azure-policy-addon
 
-az k8sconfiguration delete --name "$arc_config_name_aro-azure-voting-app" --cluster-name $azure_arc_aro --cluster-type connectedClusters -g $aro_rg_name
-az k8sconfiguration delete --name $arc_config_name_aro --cluster-name $azure_arc_aro --cluster-type connectedClusters -g $aro_rg_name
+az k8sconfiguration delete --name "$arc_config_name_aro-azure-voting-app" --cluster-name $azure_arc_aro --cluster-type connectedClusters -g $aro_rg_name -y
+az k8sconfiguration delete --name $arc_config_name_aro --cluster-name $azure_arc_aro --cluster-type connectedClusters -g $aro_rg_name -y
 
 az policy definition delete --name "aro-gitops-enforcement"
+az policy assignment delete --name xxx -g $gke_rg_name
 
-az connectedk8s delete --name $azure_arc_aro -g $aro_rg_name
+curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
+bash disable-monitoring.sh --resource-id $azureArc_aro_ClusterResourceId --kube-context $kubeContext
+# az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $common_rg_name
 
-az aro delete --name $aro_cluster_name --resource-group $aro_rg_name
+az connectedk8s delete --name $azure_arc_aro -g $aro_rg_name -y
+
+az aro delete --name $aro_cluster_name --resource-group $aro_rg_name -y
 

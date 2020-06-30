@@ -298,7 +298,8 @@ az policy definition create --name "gke-gitops-enforcement"
                             [--rules]
                             [--subscription]
 
-az policy assignment list -g $gke_rg_name
+az policy assignment list -g $gke_rg_name -g $gke_rg_name
+
 gitOpsAssignmentId=$(az policy assignment show --name xxx -g $gke_rg_name --query id)
 
 # Create a remediation for a specific assignment
@@ -353,11 +354,6 @@ Verify :
 - By default, the containerized agent collects the stdout/ stderr container logs of all the containers running in all the namespaces except kube-system. To configure container log collection specific to particular namespace or namespaces, review [Container Insights agent configuration](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/container-insights-agent-config) to configure desired data collection settings to your ConfigMap configurations file.
 - To learn how to stop monitoring your Arc enabled Kubernetes cluster with Azure Monitor for containers, see [How to stop monitoring your hybrid cluster](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/container-insights-optout-hybrid#how-to-stop-monitoring-on-arc-enabled-kubernetes).
 
-### Clean-Up
-```sh
-curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
-bash disable-monitoring.sh --resource-id $azureArc_gke_ClusterResourceId --kube-context $kubeContext
-```
 
 ## Manage Kubernetes policy within a connected cluster with Azure Policy for Kubernetes
 
@@ -468,6 +464,8 @@ Wait for a few minutes and check the logs :
 
 ```sh
 
+az policy assignment list
+
 k get ns
 
 for pod in $(k get po -l app=azure-policy -n kube-system -o=custom-columns=:.metadata.name)
@@ -518,14 +516,28 @@ See [Azure Arc doc](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/
 
 # Clean-Up
 ```sh
+
+export KUBECONFIG=gke-config
+k config view --minify
+k config get-contexts
+
+export kubeContext="gke_"$GKE_PROJECT"_"$GKE_ZONE"_"$GKE_PROJECT
+
 helm uninstall azure-policy-addon
 
-az k8sconfiguration delete --name "$arc_config_name_gke-azure-voting-app" --cluster-name $azure_arc_gke --cluster-type connectedClusters -g $gke_rg_name
-az k8sconfiguration delete --name $arc_config_name_gke --cluster-name $azure_arc_gke --cluster-type connectedClusters -g $gke_rg_name
+curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
+bash disable-monitoring.sh --resource-id $azureArc_gke_ClusterResourceId --kube-context $kubeContext
+# az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $common_rg_name
 
-az policy definition delete --name "gke-gitops-enforcement"
+az k8sconfiguration delete --name "$arc_config_name_gke-azure-voting-app" --cluster-name $azure_arc_gke --cluster-type connectedClusters -g $gke_rg_name -y
+az k8sconfiguration delete --name $arc_config_name_gke --cluster-name $azure_arc_gke --cluster-type connectedClusters -g $gke_rg_name -y
 
-az connectedk8s delete --name $azure_arc_gke -g $gke_rg_name
+az policy definition delete --name "gke-gitops-enforcement" -g $gke_rg_name
+az policy assignment delete --name xxx -g $gke_rg_name
+
+az connectedk8s delete --name $azure_arc_gke -g $gke_rg_name -y
+
+gcloud container clusters delete $GKE_PROJECT --project $GKE_PROJECT --zone=$GKE_ZONE # --node-locations=$GKE_ZONE 
 
 
 ```

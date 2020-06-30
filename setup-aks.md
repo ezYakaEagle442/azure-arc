@@ -390,8 +390,32 @@ echo "Open your brower to test the App at $azure_vote_front_url"
 See:
 - [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/use-azure-policy](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/use-azure-policy)
 - [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/policy-samples](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/policy-samples)
+- [https://docs.microsoft.com/en-us/azure/governance/policy/how-to/remediate-resources](https://docs.microsoft.com/en-us/azure/governance/policy/how-to/remediate-resources)
+- [https://docs.microsoft.com/fr-fr/cli/azure/policy/definition?view=azure-cli-latest#az-policy-definition-create](https://docs.microsoft.com/fr-fr/cli/azure/policy/definition?view=azure-cli-latest#az-policy-definition-create)
+- [https://docs.microsoft.com/fr-fr/cli/azure/policy/remediation?view=azure-cli-latest#az-policy-remediation-create](https://docs.microsoft.com/fr-fr/cli/azure/policy/remediation?view=azure-cli-latest#az-policy-remediation-create)
+Use Case: Use Azure Policy to enforce that each Microsoft.Kubernetes/connectedclusters resource or Git-Ops enabled Microsoft.ContainerService/managedClusters resource has specific Microsoft.KubernetesConfiguration/sourceControlConfigurations applied on it.
+You can use the above doc to follow steps by steps guidance in the portal , using "Deploy GitOps to Kubernetes cluster" built-in policy in the "Kubernetes" category.
+Other option you can use CLI to apply this policy running the snippet below.
 ```sh
+Assure-GitOps-endpoint-for-Kubernetes-cluster.json
 
+az policy definition list | grep -i "kubernetes"  
+az policy definition create --name "gke-gitops-enforcement"
+                            --description "Ensure to deploy GitOps to Kubernetes cluster"
+                            --display-name "gke-gitops-enforcement"
+                            [--management-group]
+                            [--metadata]
+                            [--mode]
+                            --params --git-poll-interval=1m
+                            [--rules]
+                            [--subscription]
+
+az policy assignment list -g $gke_rg_name -g $gke_rg_name
+
+gitOpsAssignmentId=$(az policy assignment show --name xxx -g $gke_rg_name --query id)
+
+# Create a remediation for a specific assignment
+az policy remediation start ...
 ```
 
 
@@ -580,13 +604,21 @@ See [Azure Arc doc](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/
 
 # Clean-Up
 ```sh
-helm uninstall azure-policy-addon
 
+export KUBECONFIG=~/.kube/config
+k config use-context $aks_cluster_name
+k config view --minify
+k config get-contexts
+export kubeContext=$aks_cluster_name
+
+
+helm uninstall azure-policy-addon
 
 az aks disable-addons -a monitoring -n $aks_cluster_name -g $aks_rg_name
 
 curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
 bash disable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --kube-context $kubeContext
+# az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $common_rg_name
 
 helm uninstall azuremonitor-containers
 helm uninstall azmon-containers-release-1
@@ -618,9 +650,16 @@ done
 k get po -l component=oms-agent -n kube-system
 
 
-az k8sconfiguration delete --name "$arc_config_name_aks-azure-voting-app" --cluster-name $azure_arc_aks --cluster-type managedClusters -g $aks_rg_name
-az k8sconfiguration delete --name $arc_config_name_aks --cluster-name $azure_arc_aks --cluster-type connectedmanagedClustersClusters -g $aks_rg_name
+az k8sconfiguration delete --name "$arc_config_name_aks-azure-voting-app" --cluster-name $azure_arc_aks --cluster-type managedClusters -g $aks_rg_name -y
+az k8sconfiguration delete --name $arc_config_name_aks --cluster-name $azure_arc_aks --cluster-type managedClusters -g $aks_rg_name -y
 
-az policy definition delete --name "aks-gitops-enforcement"
+# az policy definition delete --name "aks-gitops-enforcement"
+az policy assignment delete --name xxx -g $gke_rg_name
 
-az connectedk8s delete --name $azure_arc_aks -g $aks_rg_name
+az connectedk8s delete --name $azure_arc_aks -g $aks_rg_name -y
+
+az aks delete --name $aks_cluster_name -g $aks_rg_name -y
+
+# ACR
+az acr delete -g $aks_rg_name --name $acr_registry_name -y
+

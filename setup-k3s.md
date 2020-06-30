@@ -546,11 +546,6 @@ Verify :
 - By default, the containerized agent collects the stdout/ stderr container logs of all the containers running in all the namespaces except kube-system. To configure container log collection specific to particular namespace or namespaces, review [Container Insights agent configuration](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/container-insights-agent-config) to configure desired data collection settings to your ConfigMap configurations file.
 - To learn how to stop monitoring your Arc enabled Kubernetes cluster with Azure Monitor for containers, see [How to stop monitoring your hybrid cluster](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/container-insights-optout-hybrid#how-to-stop-monitoring-on-arc-enabled-kubernetes).
 
-### Clean-Up
-```sh
-curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
-bash disable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --kube-context $kubeContext
-```
 
 ## Manage Kubernetes policy within a connected cluster with Azure Policy for Kubernetes
 
@@ -704,15 +699,20 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/deploy-azure-io
 See [Azure Arc doc](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/troubleshooting)
 
 # Clean-Up
-
+```sh
 helm uninstall azure-policy-addon
 
-az k8sconfiguration delete --name "$arc_config_name_k3s-azure-voting-app" --cluster-name $azure_arc_k3s --cluster-type connectedClusters -g $k3s_rg_name
-az k8sconfiguration delete --name $arc_config_name_k3s --cluster-name $azure_arc_k3s --cluster-type connectedClusters -g $k3s_rg_name
+curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
+bash disable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --kube-context $kubeContext
+# az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $common_rg_name
+
+az k8sconfiguration delete --name "$arc_config_name_k3s-azure-voting-app" --cluster-name $azure_arc_k3s --cluster-type connectedClusters -g $k3s_rg_name -y
+az k8sconfiguration delete --name $arc_config_name_k3s --cluster-name $azure_arc_k3s --cluster-type connectedClusters -g $k3s_rg_name -y
 
 az policy definition delete --name "k3s-gitops-enforcement"
+az policy assignment delete --name xxx -g $k3s_rg_name
 
-az connectedk8s delete --name $azure_arc_k3s -g $k3s_rg_name
+az connectedk8s delete --name $azure_arc_k3s -g $k3s_rg_name -y
 
 az vm delete --name $k3s_vm_name -g $k3s_rg_name -y
 az network nic delete --name nic-k3s -g $k3s_rg_name
@@ -721,3 +721,4 @@ az network lb delete --name $k3s_lb
 az network public-ip delete --name $k3s_lb_pub_ip -g $k3s_rg_name
 
 az network vnet subnet update --name $k3s_subnet_name --vnet-name $k3s_vnet_name --network-security-group "" -g $k3s_rg_name
+```
