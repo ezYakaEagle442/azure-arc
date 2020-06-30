@@ -348,6 +348,7 @@ k get connectedclusters.arc.azure.com -n $azure_arc_ns
 k describe connectedclusters.arc.azure.com clustermetadata -n $azure_arc_ns
 
 # verify
+az connectedk8s list --subscription $subId -o table
 az connectedk8s list -g $k3s_rg_name -o table # -c $azure_arc_k3s --cluster-type connectedClusters
 
 # -o tsv is MANDATORY to remove quotes
@@ -425,7 +426,8 @@ k -n team-a get cm -o yaml
 k -n itops get all
 k get ep -n gitops
 k get events
-k logs -l app.kubernetes.io/component=flux-logs-agent -c flux-logs-agent -n $azure_arc_ns 
+flux_logs_agent_pod=$(k get po -l app.kubernetes.io/component=flux-logs-agent -n $azure_arc_ns -o jsonpath={.items[0].metadata.name})
+k logs $flux_logs_agent_pod -c flux-logs-agent -n $azure_arc_ns 
 # az k8sconfiguration delete --name '<config name>' -g '<resource group name>' --cluster-name '<cluster name>' --cluster-type connectedClusters
 helm ls
 ```
@@ -511,7 +513,7 @@ See the [doc](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/cont
 
 ### Setup
 
-The same analytics workspace is shared for all k8s clusters, do not recreate it if it was lareday created in previous use case.
+<span style="color:red">/!\ IMPORTANT </span> : The same analytics workspace is shared for all k8s clusters, do not recreate it if it was already created in previous use case.
 
 ```sh
 az monitor log-analytics workspace list
@@ -563,8 +565,12 @@ See also :
 - [https://github.com/Azure/Community-Policy/tree/master/Policies/KubernetesService/append-aks-api-ip-restrictions](https://github.com/Azure/Community-Policy/tree/master/Policies/KubernetesService/append-aks-api-ip-restrictions)
 - [https://docs.microsoft.com/en-us/azure/governance/policy/samples/built-in-policies#kubernetes](https://docs.microsoft.com/en-us/azure/governance/policy/samples/built-in-policies#kubernetes)
 - [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#policy-insights-data-writer-preview](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#policy-insights-data-writer-preview)
+- [https://www.openpolicyagent.org](https://www.openpolicyagent.org)
+- [https://github.com/open-policy-agent/gatekeeper](https://github.com/open-policy-agent/gatekeeper)
 
 The Kubernetes cluster must be version 1.14 or higher.
+
+![OPA](./img/opa.png)
 
 ```sh
 tenantId=$(az account show --query tenantId -o tsv)
@@ -642,6 +648,13 @@ done
 ```
 [Assign a built-in policy definition](https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json#assign-a-built-in-policy-definition)
 
+Ex: "Preview: Do not allow [privileged containers](https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities) in Kubernetes cluster"
+By default, Docker containers are “unprivileged” and cannot, for example, run a Docker daemon inside a Docker container. This is because by default a container is not allowed to access any devices, but a “privileged” container is given access to all devices (see the documentation on cgroups devices).
+
+When the operator executes docker run --privileged, Docker will enable access to all devices on the host as well as set some configuration in AppArmor or SELinux to allow the container nearly all the same access to the host as processes running outside containers on the host.
+
+See also this [blog](https://blog.trailofbits.com/2019/07/19/understanding-docker-container-escapes)
+
 Wait for 20  minutes (Azure Policy refreshes on a 15 minute cycle) and check the logs :
 
 ```sh
@@ -663,8 +676,19 @@ do
   fi
 done
 
+k get crds
+# k get configs.config.gatekeeper.sh -n gatekeeper-system
+# k describe configs.config.gatekeeper.sh -n gatekeeper-system
+
+container_no_privilege_constraint=$(k get k8sazurecontainernoprivilege.constraints.gatekeeper.sh -n gatekeeper-system -o jsonpath="{.items[0].metadata.name}")
+k describe k8sazurecontainernoprivilege.constraints.gatekeeper.sh $container_no_privilege_constraint -n gatekeeper-system
+
 # Try to deploy a "bad" Pod
 k apply -f app/root-pod.yaml
+
+# You should see the error below
+Error from server ([denied by azurepolicy-container-no-privilege-dc2585889397ecb73d135643b3e0e0f2a6da54110d59e676c2286eac3c80dab5] Privileged container is not allowed: root-demo, securityContext: {"privileged": true}): error when creating "root-demo-pod.yaml": admission webhook "validation.gatekeeper.sh" denied the request: [denied by azurepolicy-container-no-privilege-dc2585889397ecb73d135643b3e0e0f2a6da54110d59e676c2286eac3c80dab5] Privileged container is not allowed: root-demo, securityContext: {"privileged": true}
+
 ```
 
 ## IoT Edge workloads integration

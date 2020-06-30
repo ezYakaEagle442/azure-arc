@@ -49,5 +49,8 @@ helm repo add fluxcd https://charts.fluxcd.io
 # Azure Policy
 helm repo add azure-policy https://raw.githubusercontent.com/Azure/azure-policy/master/extensions/policy-addon-kubernetes/helm-charts
 
+# helmChartName="azuremonitor-containers" / releaseName="azmon-containers-release-1"
+helm repo add https://kubernetes-charts-incubator.storage.googleapis.com
+
 helm repo ls
 ```

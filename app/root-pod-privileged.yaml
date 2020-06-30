@@ -1,3 +1,4 @@
+# https://github.com/open-policy-agent/gatekeeper/blob/master/library/pod-security-policy/privileged-containers/example.yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -12,10 +13,10 @@ spec:
     command: ['sh', '-c', 'while true;do date;echo hello;sleep 10;done']
     resources:
       requests:
-        memory: "10Mi"
+        memory: "12Mi"
         cpu: "100m"
       limits:
-        memory: "10Mi"
+        memory: "20Mi"
         cpu: "100m"
     ports:
     - containerPort: 80

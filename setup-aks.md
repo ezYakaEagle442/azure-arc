@@ -49,21 +49,46 @@ az acr repository list --name $acr_registry_name
 az acr check-health --yes -n $acr_registry_name 
 
 # Get the ACR registry resource id
-acr_registry_id=$(az acr show --name $acr_registry_name --resource-group $rg_name --query "id" --output tsv)
+acr_registry_id=$(az acr show --name $acr_registry_name --resource-group $aks_rg_name --query "id" --output tsv)
 echo "ACR registry ID :" $acr_registry_id
-
-# with SP when Managed Identities is not set during AKS cluster creation : az role assignment create --assignee $sp_id --role acrpull --scope $acr_registry_id
-#  when Managed Identities is set during AKS cluster creation :
-
-CLIENT_ID=$(az aks show --resource-group $rg_name --name $cluster_name --query "servicePrincipalProfile.clientId" --output tsv)
-echo "AKS CLIENT_ID:" $CLIENT_ID 
-
-# aks_client_id=$(az aks show -g $rg_name -n $cluster_name --query identityProfile.kubeletidentity.clientId -o tsv)
-# echo "AKS Cluster Identity Client ID " $aks_client_id
 
 ```
 
+## Create AKS Service Principal
 
+
+See:
+-  [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/create-onboarding-service-principal](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/create-onboarding-service-principal)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/resource-provider-operations#microsofthybridcompute](https://docs.microsoft.com/en-us/azure/role-based-access-control/resource-provider-operations#microsofthybridcompute)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#policy-insights-data-writer-preview](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#policy-insights-data-writer-preview)
+<span style="text-decoration: underline">Note for AKS</span>: 
+Read [https://docs.microsoft.com/en-us/azure/aks/kubernetes-service-principal](https://docs.microsoft.com/en-us/azure/aks/kubernetes-service-principal)
+[Additional considerations](https://docs.microsoft.com/en-us/azure/aks/kubernetes-service-principal#additional-considerations)
+On the agent node VMs in the Kubernetes cluster, the service principal credentials are stored in the file /etc/kubernetes/azure.json
+When you use the az aks create command to generate the service principal automatically, the service principal credentials are written to the file /aksServicePrincipal.json on the machine used to run the command.
+(You do not need to create SPN when enabling managed-identity on AKS cluster.)
+
+
+```sh
+aks_sp_password=$(az ad sp create-for-rbac --name $appName-aks --role contributor --query password -o tsv)
+echo $aks_sp_password > aks_spp.txt
+echo "Service Principal Password saved to ./aks_spp.txt IMPORTANT Keep your password ..." 
+# aks_sp_password=`cat aks_spp.txt`
+aks_sp_id=$(az ad sp show --id http://$appName-aks --query appId -o tsv)
+#aks_sp_id=$(az ad sp list --all --query "[?appDisplayName=='${appName}-aks'].{appId:appId}" --output tsv)
+#aks_sp_id=$(az ad sp list --show-mine --query "[?appDisplayName=='${appName}-aks'].{appId:appId}" -o tsv)
+echo "Service Principal ID:" $aks_sp_id 
+echo $aks_sp_id > aks_spid.txt
+# aks_sp_id=`cat aks_spid.txt`
+az ad sp show --id $aks_sp_id
+
+# az role assignment create \
+#     --role 34e09817-6cbe-4d01-b1a2-e0eac5743d41 \
+#     --assignee $aks_sp_id \
+#    --scope /subscriptions/$subId
+
+```
 ## Create AKS Cluster
 
 To learn more about UDR, see [https://docs.microsoft.com/en-us/azure/virtual-network/virtual-networks-udr-overview](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-networks-udr-overview)
@@ -71,7 +96,7 @@ To learn more about UDR, see [https://docs.microsoft.com/en-us/azure/virtual-net
 
 ```sh
 
-az aks create --name $aks_aks_cluster_name \
+az aks create --name $aks_cluster_name \
     --resource-group $aks_rg_name \
     --node-count 1 \
     --location $location \
@@ -87,10 +112,21 @@ az aks create --name $aks_aks_cluster_name \
     --vm-set-type VirtualMachineScaleSets \
     --ssh-key-value ~/.ssh/${ssh_key}.pub \
     --outbound-type loadBalancer \
-    --service-principal $sp_id \
-    --client-secret $sp_password \
+    --service-principal $aks_sp_id \
+    --client-secret $aks_sp_password \
     --attach-acr $acr_registry_name \
     --verbose
+
+aks_client_id=$(az aks show --resource-group $aks_rg_name --name $aks_cluster_name --query "servicePrincipalProfile.clientId" --output tsv)
+echo "AKS CLIENT_ID:" $aks_client_id 
+
+# with SP when Managed Identities is not set during AKS cluster creation
+# when Managed Identities is set during AKS cluster creation :
+
+# aks_client_id=$(az aks show -g $rg_name -n $cluster_name --query identityProfile.kubeletidentity.clientId -o tsv)
+# echo "AKS Cluster Identity Client ID " $aks_client_id
+
+# az role assignment create --assignee $aks_client_id --role acrpull --scope $acr_registry_id
 
 ```
 
@@ -102,16 +138,24 @@ Apply [k alias](./tools#kube-tools)
 ```sh
 
 ls -al ~/.kube
-rm  ~/.kube/config
+# rm  ~/.kube/config
 
-az aks get-credentials --resource-group $aks_rg_name --name $aks_cluster_name --admin
-
+az aks get-credentials --resource-group $aks_rg_name --name $aks_cluster_name
 az aks show -n $aks_cluster_name -g $aks_rg_name
 
-aks_api_server_url=$(az aks show -n $aks_cluster_name -g $aks_rg_name --query 'privateFqdn' -o tsv)
+cat ~/.kube/config
+k cluster-info
+export KUBECONFIG=~/.kube/config
+k config view --minify
+k config get-contexts
+
+export kubeContext=$aks_cluster_name
+k config use-context $aks_cluster_name
+
+aks_api_server_url=$(az aks show -n $aks_cluster_name -g $aks_rg_name --query 'fqdn' -o tsv)
 echo "AKS API server URL: " $aks_api_server_url
 
-TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+# TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
 
 ```
 
@@ -128,19 +172,9 @@ az aks list -o table
 aks_cluster_id=$(az aks show -n $aks_cluster_name -g $aks_rg_name --query id -o tsv)
 echo "AKS cluster ID : " $aks_cluster_id
 
-az aks get-credentials --resource-group $aks_rg_name --name $aks_cluster_name --admin
-k cluster-info
-k config view
-
-# below is N/A with ManagedIdentities
-# Get the id of the service principal configured for AKS
-# CLIENT_ID=$(az aks show --resource-group $aks_rg_name --name $aks_cluster_name --query "servicePrincipalProfile.clientId" --output tsv)
-# echo "CLIENT_ID:" $CLIENT_ID 
-
-
 ```
 
-## Create Namespaces
+## Optionnal Play: Create Namespaces
 ```sh
 k create namespace development
 k label namespace/development purpose=development
@@ -168,6 +202,13 @@ k get nodes
 # https://docs.microsoft.com/en-us/azure/aks/availability-zones#verify-node-distribution-across-zones
 # https://docs.microsoft.com/en-us/azure/aks/availability-zones#verify-pod-distribution-across-zones
 k describe nodes | grep -e "Name:" -e "failure-domain.beta.kubernetes.io/zone"
+
+# Optional Play with nodes:
+
+for node in $(k get nodes -o=custom-columns=':.metadata.name') # k get nodes -o jsonpath={.items[*].metadata.name}
+do 
+  k describe node $node
+done
 
 k get pods
 k top node
@@ -207,7 +248,7 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/connect-cluster
 azure_arc_ns="azure-arc"
 
 # Deploy Azure Arc Agents for Kubernetes using Helm 3, into the azure-arc namespace
-az connectedk8s connect --name $azure_arc_aks  -l $location -g $aks_rg_name
+az connectedk8s connect --name $azure_arc_aks  -l $location -g $aks_rg_name # --kube-config $KUBECONFIG --kube-context $kubeContext
 k get crds
 k get azureclusteridentityrequests.clusterconfig.azure.com -n $azure_arc_ns
 k describe azureclusteridentityrequests.clusterconfig.azure.com config-agent-identity-request -n $azure_arc_ns
@@ -216,7 +257,9 @@ k get managedClusters.arc.azure.com -n $azure_arc_ns
 k describe managedClusters.arc.azure.com clustermetadata -n $azure_arc_ns
 
 # verify
+az connectedk8s list --subscription $subId -o table
 az connectedk8s list -g $aks_rg_name -o table # -c $azure_arc_aks --cluster-type managedClusters 
+az connectedk8s show --name $azure_arc_aks -g $aks_rg_name 
 helm status azure-arc --namespace default 
 
 # Azure Arc enabled Kubernetes deploys a few operators into the azure-arc namespace. You can view these deployments and pods here:
@@ -240,7 +283,19 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/use-gitops-conn
 
 Fork this [sample repo](https://github.com/Azure/arc-k8s-demo) into your GitHub account 
 
+The Config Agent on AKS cluster requires a Service Principal (SPN) for authentication, thus you can enable this capability only for SPN-based AKS clusters. 
+AKS clusters created with Managed Identity (MSI) are not supported yet.
+
 ```sh
+
+tenantId=$(az account show --query tenantId -o tsv)
+
+helm upgrade azure-k8s-config azurearcfork8s/azure-k8s-config --install \
+  --set global.subscriptionId=${subId} \
+  --set global.resourceGroupName=${aks_rg_name} \
+  --set global.resourceName=${aks_cluster_name} \
+  --set global.location=${location} \
+  --set global.tenantId=${tenantId}
 
 git clone $gitops_url
 
@@ -256,12 +311,17 @@ az k8sconfiguration create --name $arc_config_name_aks --cluster-name $azure_arc
   --scope cluster # namespace
 
 az k8sconfiguration list --cluster-name $azure_arc_aks -g $aks_rg_name --cluster-type managedClusters
-az k8sconfiguration show --cluster-name $azure_arc_aks --name $arc_config_name_aks -g $aks_rg_name --cluster-type managedClusters
+az k8sconfiguration show --name $arc_config_name_aks --cluster-name $azure_arc_aks  -g $aks_rg_name --cluster-type managedClusters
+
+repositoryPublicKey=$(az k8sconfiguration show --cluster-name $azure_arc_aks --name $arc_config_name_aks -g $aks_rg_name --cluster-type managedClusters --query 'repositoryPublicKey')
+echo "repositoryPublicKey : " $repositoryPublicKey
+echo "Add this Public Key to your GitHub Project Deploy Key and allow write access at https://github.com/$github_usr/arc-k8s-demo/settings/keys"
 
 # notices the new Pending configuration
 complianceState=$(az k8sconfiguration show --cluster-name $azure_arc_aks --name $arc_config_name_aks -g $aks_rg_name --cluster-type managedClusters --query 'complianceStatus.complianceState')
 echo "Compliance State " : $complianceState
 
+k get events -A 
 k get gitconfigs.clusterconfig.azure.com -n $arc_gitops_namespace
 k describe gitconfigs.clusterconfig.azure.com -n $arc_gitops_namespace
 
@@ -285,7 +345,8 @@ k -n team-a get cm -o yaml
 k -n itops get all
 k get ep -n gitops
 k get events
-k logs -l app.kubernetes.io/component=flux-logs-agent -c flux-logs-agent -n $azure_arc_ns 
+flux_logs_agent_pod=$(k get po -l app.kubernetes.io/component=flux-logs-agent -n $azure_arc_ns -o jsonpath={.items[0].metadata.name})
+k logs $flux_logs_agent_pod -c flux-logs-agent -n $azure_arc_ns 
 # az k8sconfiguration delete --name '<config name>' -g '<resource group name>' --cluster-name '<cluster name>' --cluster-type managedClusters
 helm ls
 ```
@@ -349,44 +410,159 @@ See the [doc](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/cont
 
 ### Setup
 
-The same analytics workspace is shared for all k8s clusters, do not recreate it if it was lareday created in previous use case.
+<span style="color:red">/!\ IMPORTANT </span> : The same analytics workspace is shared for all k8s clusters, do not recreate it if it was already created in previous use case.
 
 ```sh
 az monitor log-analytics workspace create -n $analytics_workspace_name --location $location -g $common_rg_name --verbose
 az monitor log-analytics workspace list
 az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_rg_name --verbose
 
-export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_rg_name --query id)
+# -o tsv to manage quotes issues
+export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_rg_name --query id -o tsv)
 echo "analytics_workspace_id:" $analytics_workspace_id
 
-az aks enable-addons --addons monitoring -g $aks_rg_name --name $aks_cluster_name --workspace-resource-id $analytics_workspace_id
+# https://github.com/Azure/azure-cli/issues/9228
+az aks enable-addons --addons monitoring --name $aks_cluster_name --workspace-resource-id $analytics_workspace_id -g $aks_rg_name  # --subscription $subId
 
 curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
-export azureArc_AKS_ClusterResourceId=$(az connectedk8s show -g $aks_rg_name --name $azure_arc_aks --query id)
+# export azureArc_AKS_ClusterResourceId=$(az connectedk8s show -g $aks_rg_name --name $azure_arc_aks --query id)
+export azureArc_AKS_ClusterResourceId=$(az aks show -n $aks_cluster_name -g $aks_rg_name --query 'id' -o tsv)
 
 k config view --minify
 k config get-contexts
-k config rename-context default k3s-default
-export kubeContext="aks-default" #"<kubeContext name of your k8s cluster>"
-
+k config current-context
+k config use-context $kubeContext
 bash enable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
+helm ls --kube-context $kubeContext -v=10
+helm search repo azuremonitor-containers
 
 ```
 Verify :
 - By default, the containerized agent collects the stdout/ stderr container logs of all the containers running in all the namespaces except kube-system. To configure container log collection specific to particular namespace or namespaces, review [Container Insights agent configuration](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/container-insights-agent-config) to configure desired data collection settings to your ConfigMap configurations file.
 - To learn how to stop monitoring your Arc enabled Kubernetes cluster with Azure Monitor for containers, see [How to stop monitoring your hybrid cluster](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/container-insights-optout-hybrid#how-to-stop-monitoring-on-arc-enabled-kubernetes).
 
-### Clean-Up
-```sh
-curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
-bash disable-monitoring.sh --resource-id $azureArcClusterResourceId # --kube-context $kubeContext
-```
 
 ## Manage Kubernetes policy within a connected cluster with Azure Policy for Kubernetes
 
 See [https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json](https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json)
 
+See also :
+- [https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json](https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json)
+- [https://docs.microsoft.com/en-us/azure/governance/policy/concepts/rego-for-aks?](https://docs.microsoft.com/en-us/azure/governance/policy/concepts/rego-for-aks?)
+- [https://docs.microsoft.com/en-us/azure/security-center/security-center-permissions](https://docs.microsoft.com/en-us/azure/security-center/security-center-permissions)
+- [https://docs.microsoft.com/en-us/azure/governance/policy/how-to/programmatically-create](https://docs.microsoft.com/en-us/azure/governance/policy/how-to/programmatically-create)
+- [https://docs.microsoft.com/en-us/azure/security-center/security-center-permissions](https://docs.microsoft.com/en-us/azure/security-center/security-center-permissions)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#security-admin](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#security-admin)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#resource-policy-contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#resource-policy-contributor)
+- [https://github.com/Azure/Community-Policy/tree/master/Policies/KubernetesService/append-aks-api-ip-restrictions](https://github.com/Azure/Community-Policy/tree/master/Policies/KubernetesService/append-aks-api-ip-restrictions)
+- [https://docs.microsoft.com/en-us/azure/governance/policy/samples/built-in-policies#kubernetes](https://docs.microsoft.com/en-us/azure/governance/policy/samples/built-in-policies#kubernetes)
+- [https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#policy-insights-data-writer-preview](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#policy-insights-data-writer-preview)
+- [https://www.openpolicyagent.org](https://www.openpolicyagent.org)
+- [https://github.com/open-policy-agent/gatekeeper](https://github.com/open-policy-agent/gatekeeper)
+
+The Kubernetes cluster must be version 1.14 or higher.
+
+![OPA](./img/opa.png)
+
 ```sh
+tenantId=$(az account show --query tenantId -o tsv)
+
+az policy definition list | grep -i "kubernetes" | grep "displayName"
+
+# https://docs.microsoft.com/en-us/cli/azure/role/definition?view=azure-cli-latest#az-role-definition-list
+az role definition list | grep -i "Policy Insights Data Writer"  
+
+helm search repo azure-policy
+
+# Setup directly on AKS
+az aks enable-addons --addons azure-policy --name $aks_cluster_name --resource-group $aks_rg_name
+
+# Setup on AKS as Arc enabled cluster
+#helm install azure-policy-addon azure-policy/azure-policy-addon-arc-clusters \
+#    --set azurepolicy.env.resourceid=$azureArc_aks_ClusterResourceId \
+#    --set azurepolicy.env.clientid=$aks_sp_id \
+#    --set azurepolicy.env.clientsecret=$aks_sp_password  \
+#    --set azurepolicy.env.tenantid=$tenantId
+
+helm ls
+# azure-policy pod is installed in kube-system namespace
+k get pods -n kube-system
+
+# gatekeeper pod is installed in gatekeeper-system namespace
+k get pods -n gatekeeper-system
+
+# Get the Azure-Policy pod name installed in kube-system namespace
+# -l app=azure-policy-webhook 
+for pod in $(k get po -l app=azure-policy -n kube-system -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"="^azure-policy.*" ]]
+    then
+      echo "Verifying Azure-Policy Pod $pod"
+      # k describe pod $pod -n kube-system
+      k logs $pod -n kube-system # | grep -i "Error"
+      # k exec $pod -n kube-system -it -- /bin/sh
+  fi
+done
+
+# Get the GateKeeper pod name installed in gatekeeper-system namespace
+for pod in $(k get po -l gatekeeper.sh/system=yes -n gatekeeper-system -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"="^gatekeeper.*" ]]
+    then
+      echo "Verifying GateKeeper Pod $pod"
+      # k describe pod $pod -n gatekeeper-system
+      k logs $pod -n gatekeeper-system  | grep -i "Error"
+      # k exec $pod -n gatekeeper-system -it -- /bin/sh
+  fi
+done
+
+```
+[Assign a built-in policy definition](https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json#assign-a-built-in-policy-definition)
+
+Ex: "Preview: Do not allow [privileged containers](https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities) in Kubernetes cluster"
+By default, Docker containers are “unprivileged” and cannot, for example, run a Docker daemon inside a Docker container. This is because by default a container is not allowed to access any devices, but a “privileged” container is given access to all devices (see the documentation on cgroups devices).
+
+When the operator executes docker run --privileged, Docker will enable access to all devices on the host as well as set some configuration in AppArmor or SELinux to allow the container nearly all the same access to the host as processes running outside containers on the host.
+
+See also this [blog](https://blog.trailofbits.com/2019/07/19/understanding-docker-container-escapes)
+
+Wait for a few minutes and check the logs :
+
+```sh
+
+k get ns
+
+for pod in $(k get po -l app=azure-policy -n kube-system -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"="^azure-policy.*" ]]
+    then
+      echo "Verifying Azure-Policy Pod $pod"
+      k logs $pod -n kube-system # | grep -i "Error"
+  fi
+done
+
+for pod in $(k get po -l gatekeeper.sh/system=yes -n gatekeeper-system -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"="^gatekeeper.*" ]]
+    then
+      echo "Verifying GateKeeper Pod $pod"
+      k logs $pod -n gatekeeper-system  # | grep -i "Error"
+  fi
+done
+
+k get crds
+# k get configs.config.gatekeeper.sh -n gatekeeper-system
+# k describe configs.config.gatekeeper.sh -n gatekeeper-system
+
+container_no_privilege_constraint=$(k get k8sazurecontainernoprivilege.constraints.gatekeeper.sh -n gatekeeper-system -o jsonpath="{.items[0].metadata.name}")
+k describe k8sazurecontainernoprivilege.constraints.gatekeeper.sh $container_no_privilege_constraint -n gatekeeper-system
+
+# Try to deploy a "bad" Pod
+k apply -f app/root-pod.yaml
+
+# You should see the error below
+Error from server ([denied by azurepolicy-container-no-privilege-dc2585889397ecb73d135643b3e0e0f2a6da54110d59e676c2286eac3c80dab5] Privileged container is not allowed: root-demo, securityContext: {"privileged": true}): error when creating "root-demo-pod.yaml": admission webhook "validation.gatekeeper.sh" denied the request: [denied by azurepolicy-container-no-privilege-dc2585889397ecb73d135643b3e0e0f2a6da54110d59e676c2286eac3c80dab5] Privileged container is not allowed: root-demo, securityContext: {"privileged": true}
+
 
 ```
 
@@ -401,3 +577,50 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/deploy-azure-io
 ## Troubleshooting
 
 See [Azure Arc doc](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/troubleshooting)
+
+# Clean-Up
+```sh
+helm uninstall azure-policy-addon
+
+
+az aks disable-addons -a monitoring -n $aks_cluster_name -g $aks_rg_name
+
+curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
+bash disable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --kube-context $kubeContext
+
+helm uninstall azuremonitor-containers
+helm uninstall azmon-containers-release-1
+
+k delete ds omsagent -n kube-system
+k delete ds omsagent-win -n kube-system
+
+k delete serviceaccounts omsagent -n kube-system #
+
+for deployment in $(k get deployments -l component=oms-agent -n kube-system -o=custom-columns=:.metadata.name)
+do
+  if [[ "$deployment"="^oms.*" ]]
+    then
+      echo "Deleting OMS Deployment $deployment"
+      k delete deployment $deployment -n kube-system
+  fi
+done
+
+for pod in $(k get po -l component=oms-agent -n kube-system -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"="^oms.*" ]]
+    then
+      echo "Deleting OMS Pod $pod"
+      k delete pod $pod -n kube-system
+      # k describe pod $pod -n kube-system
+      # k logs $pod -n kube-system  | grep -i "Error"
+  fi
+done
+k get po -l component=oms-agent -n kube-system
+
+
+az k8sconfiguration delete --name "$arc_config_name_aks-azure-voting-app" --cluster-name $azure_arc_aks --cluster-type managedClusters -g $aks_rg_name
+az k8sconfiguration delete --name $arc_config_name_aks --cluster-name $azure_arc_aks --cluster-type connectedmanagedClustersClusters -g $aks_rg_name
+
+az policy definition delete --name "aks-gitops-enforcement"
+
+az connectedk8s delete --name $azure_arc_aks -g $aks_rg_name
