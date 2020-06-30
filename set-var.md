@@ -65,7 +65,7 @@ echo "Shared RG name:" $common_rg_name
 azure_arc_k3s="Azure-Arc-K3S"
 echo "Azure Arc K3S registered Cluster:" $azure_arc_k3s 
 
-azure_arc_aks="Azure-Arc-AKS"
+azure_arc_aks=$aks_cluster_name # "Azure-Arc-AKS"
 echo "Azure Arc AKS registered Cluster:" $azure_arc_aks 
 
 azure_arc_aro="Azure-Arc-ARO"
@@ -230,6 +230,7 @@ echo "GKE account :" $GKE_ACCOUNT
 GKE_PROJECT="gke-enabled-with-azure-arc"
 echo "GKE Project :" $GKE_PROJECT
 
+#europe-west4-a | europe-west4-b | europe-west4-c
 GKE_ZONE="europe-west4"
 echo "GKE Zone :" $GKE_ZONE
 
