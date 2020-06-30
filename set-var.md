@@ -231,7 +231,7 @@ GKE_PROJECT="gke-enabled-with-azure-arc"
 echo "GKE Project :" $GKE_PROJECT
 
 #europe-west4-a | europe-west4-b | europe-west4-c
-GKE_ZONE="europe-west4"
+GKE_ZONE="europe-west4-a"
 echo "GKE Zone :" $GKE_ZONE
 
 ```
