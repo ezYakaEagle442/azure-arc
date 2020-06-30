@@ -363,6 +363,9 @@ set ts=2 sw=2 et sts=2
 . ~/.vimrc
 ```
 
+## Open Policy Agent tools
+Install [VSCode extension](https://marketplace.visualstudio.com/items?itemName=tsandall.opa) for [OPA](https://www.openpolicyagent.org)
+
 ## ARO tips
 
 [https://github.com/stuartatmicrosoft/azure-aro](https://github.com/stuartatmicrosoft/azure-aro)
