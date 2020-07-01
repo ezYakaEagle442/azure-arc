@@ -538,6 +538,6 @@ az policy assignment delete --name xxx -g $gke_rg_name
 az connectedk8s delete --name $azure_arc_gke -g $gke_rg_name -y
 
 gcloud container clusters delete $GKE_PROJECT --project $GKE_PROJECT --zone=$GKE_ZONE # --node-locations=$GKE_ZONE 
-
+gcloud projects delete $GKE_PROJECT --name $GKE_PROJECT --verbosity=info -Y
 
 ```
