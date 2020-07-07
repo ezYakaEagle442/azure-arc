@@ -48,7 +48,15 @@ See [https://docs.microsoft.com/en-us/windows/wsl/install-win10#update-to-wsl-2]
 Pre-req: Windows 10, updated to version 2004, **Build 19041** or higher.
 
 ```sh
+dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
 
+# reboot
+wsl --set-default-version 2
+
+# The update from WSL 1 to WSL 2 may take several minutes to complete depending on the size of your targeted distribution. If you are running an older (legacy) installation of WSL 1 from Windows 10 Anniversary Update or Creators Update, you may encounter an update error. Follow these instructions to uninstall and remove any legacy distributions.
+
+wsl --list --verbose
+wsl --set-version <distribution name> <versionNumber>
 
 ```
 
