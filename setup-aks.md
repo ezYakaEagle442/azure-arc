@@ -581,6 +581,11 @@ k get crds
 container_no_privilege_constraint=$(k get k8sazurecontainernoprivilege.constraints.gatekeeper.sh -n gatekeeper-system -o jsonpath="{.items[0].metadata.name}")
 k describe k8sazurecontainernoprivilege.constraints.gatekeeper.sh $container_no_privilege_constraint -n gatekeeper-system
 
+# https://github.com/Azure/azure-policy/tree/master/samples/KubernetesService
+# https://github.com/Azure/azure-policy/tree/master/built-in-policies/policyDefinitions/Kubernetes%20service
+# https://raw.githubusercontent.com/Azure/azure-policy/master/built-in-references/Kubernetes/container-no-privilege/template.yaml
+# https://github.com/open-policy-agent/gatekeeper/tree/master/library/pod-security-policy/privileged-containers
+
 # Try to deploy a "bad" Pod
 k apply -f app/root-pod.yaml
 
