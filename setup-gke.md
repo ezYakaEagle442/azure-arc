@@ -12,17 +12,19 @@ gcloud auth login $GKE_ACCOUNT
 gcloud config list
 gcloud config set account $GKE_ACCOUNT
 
-gcloud projects create $GKE_PROJECT --name $GKE_PROJECT --verbosity=info
+GKE_PROJECT_ID="$GKE_PROJECT-$(uuidgen | cut -d '-' -f2 | tr '[A-Z]' '[a-z]')"
+gcloud projects create $GKE_PROJECT_ID --name $GKE_PROJECT --verbosity=info
 gcloud projects list 
 gcloud container clusters list --project $GKE_PROJECT
-gcloud config set project $GKE_PROJECT
+gcloud config set project $GKE_PROJECT_ID
 gcloud config list
 # These flags are available to all commands: --account, --billing-project, --configuration, --flags-file, --flatten, --format, --help, --impersonate-service-account, --log-http, --project, --quiet, --trace-token, --user-output-enabled, --verbosity.
 
 export KUBECONFIG=gke-config
 
 # You need to enable GKE API, see at https://console.cloud.google.com/apis/api/container.googleapis.com/overview?project=gke-enabled-with-azure-arc
-gcloud container clusters create $GKE_PROJECT --project $GKE_PROJECT \
+echo "You need to enable GKE API, see at https://console.cloud.google.com/apis/api/container.googleapis.com/overview?project=gke-enabled-with-azure-arc"
+gcloud container clusters create $GKE_PROJECT --project $GKE_PROJECT_ID \
     --zone=$GKE_ZONE \
     --node-locations=$GKE_ZONE \
     --disk-type=pd-ssd \
@@ -34,7 +36,7 @@ gcloud container clusters create $GKE_PROJECT --project $GKE_PROJECT \
 # check at https://console.cloud.google.com/kubernetes/list?project=gke-enabled-with-azure-arc
 # you may verified that 3 nodes have been created into the default nodepool, 1 per zone if you did create cluster with --zone europe-west4
 
-gcloud container clusters list --project $GKE_PROJECT
+gcloud container clusters list --project $GKE_PROJECT_ID
 gcloud container clusters get-credentials $GKE_PROJECT --zone $GKE_ZONE
 
 cat gke-config
@@ -492,6 +494,11 @@ k get crds
 
 container_no_privilege_constraint=$(k get k8sazurecontainernoprivilege.constraints.gatekeeper.sh -n gatekeeper-system -o jsonpath="{.items[0].metadata.name}")
 k describe k8sazurecontainernoprivilege.constraints.gatekeeper.sh $container_no_privilege_constraint -n gatekeeper-system
+
+# https://github.com/Azure/azure-policy/tree/master/samples/KubernetesService
+# https://github.com/Azure/azure-policy/tree/master/built-in-policies/policyDefinitions/Kubernetes%20service
+# https://raw.githubusercontent.com/Azure/azure-policy/master/built-in-references/Kubernetes/container-no-privilege/template.yaml
+# https://github.com/open-policy-agent/gatekeeper/tree/master/library/pod-security-policy/privileged-containers
 
 # Try to deploy a "bad" Pod
 k apply -f app/root-pod.yaml
