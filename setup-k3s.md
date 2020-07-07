@@ -197,7 +197,7 @@ sudo apt install jq
 ```sh
 
 # Installing k3s to /usr/local/bin/k3s
-curl -sfL https://get.k3s.io | sh -
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--bind-address $k3s_vm_pub_ip --advertise-address $k3s_vm_pub_ip --disable=traefik --kube-apiserver-arg default-not-ready-toleration-seconds=10 --kube-apiserver-arg default-unreachable-toleration-seconds=10 --kube-controller-arg node-monitor-period=10s --kube-controller-arg node-monitor-grace-period=10s --kubelet-arg node-status-update-frequency=5s" sh -
 # wget -q -O - https://raw.githubusercontent.com/rancher/k3s/master/install.sh | sh -
 service k3s status
 k3s --version
@@ -299,10 +299,14 @@ az vm create --name "$k3s_vm_name-agent" \
 # myip=$(dig +short myip.opendns.com @resolver1.opendns.com)
 # cluster_internal_ip=$(k get nodes -o jsonpath="{.items[0].status.addresses[0].address}")
 
+curl -sfL https://get.k3s.io | K3S_URL=https://${k3s_lb_pub_ip_address} K3S_TOKEN= $NODE_TOKEN sh -
+
+
 ipconf=$(ip addr show eth0 | grep inet | cut -d / -f1)
 cluster_internal_ip="${ipconf:9:13}"
 # NODE_TOKEN comes from /var/lib/rancher/k3s/server/node-token on your server
 NODE_TOKEN=`sudo cat /var/lib/rancher/k3s/server/node-token`
+
 sudo k3s agent --server https://$cluster_internal_ip:6443 --node-ip $cluster_internal_ip --token $NODE_TOKEN # --flannel-backend=none
 
 ```
@@ -658,7 +662,7 @@ do
   if [[ "$pod"="^azure-policy.*" ]]
     then
       echo "Verifying Azure-Policy Pod $pod"
-      k logs $pod -n kube-system # | grep -i "Error"
+      k logs $pod -n kube-system | grep -i "denied by azurepolicy"
   fi
 done
 
@@ -667,7 +671,7 @@ do
   if [[ "$pod"="^gatekeeper.*" ]]
     then
       echo "Verifying GateKeeper Pod $pod"
-      k logs $pod -n gatekeeper-system  # | grep -i "Error"
+      k logs $pod -n gatekeeper-system  | grep -i "denied admission"
   fi
 done
 
@@ -675,8 +679,13 @@ k get crds
 # k get configs.config.gatekeeper.sh -n gatekeeper-system
 # k describe configs.config.gatekeeper.sh -n gatekeeper-system
 
-container_no_privilege_constraint=$(k get k8sazurecontainernoprivilege.constraints.gatekeeper.sh -n gatekeeper-system -o jsonpath="{.items[0].metadata.name}")
+container_no_privilege_constraint=$(k get k8sazurecontainernoprivilege.constraints.gatekeeper.sh -n gatekeeper-system -o jsonpath="{.items[*].metadata.name}")
 k describe k8sazurecontainernoprivilege.constraints.gatekeeper.sh $container_no_privilege_constraint -n gatekeeper-system
+
+# https://github.com/Azure/azure-policy/tree/master/samples/KubernetesService
+# https://github.com/Azure/azure-policy/tree/master/built-in-policies/policyDefinitions/Kubernetes%20service
+# https://raw.githubusercontent.com/Azure/azure-policy/master/built-in-references/Kubernetes/container-no-privilege/template.yaml
+# https://github.com/open-policy-agent/gatekeeper/tree/master/library/pod-security-policy/privileged-containers
 
 # Try to deploy a "bad" Pod
 k apply -f app/root-pod.yaml
@@ -722,3 +731,13 @@ az network public-ip delete --name $k3s_lb_pub_ip -g $k3s_rg_name
 
 az network vnet subnet update --name $k3s_subnet_name --vnet-name $k3s_vnet_name --network-security-group "" -g $k3s_rg_name
 ```
+
+# K3S Fun with Rasberry Pi
+
+See:
+- [Setup K3S on a Raspberry-Pi in 15 minutes](https://medium.com/@alexellisuk/walk-through-install-kubernetes-to-your-raspberry-pi-in-15-minutes-84a8492dc95a)
+- [https://github.com/Sheldonwl/rpi-travel-case](https://github.com/Sheldonwl/rpi-travel-case)
+- [https://doingdata.cloud/2020/05/24/how-to-k3s-on-raspberry-pi](https://doingdata.cloud/2020/05/24/how-to-k3s-on-raspberry-pi)
+- [https://opensource.com/article/20/3/kubernetes-raspberry-pi-k3s](https://opensource.com/article/20/3/kubernetes-raspberry-pi-k3s)
+- [https://blog.alexellis.io/raspberry-pi-homelab-with-k3sup](https://blog.alexellis.io/raspberry-pi-homelab-with-k3sup)
+- []()
