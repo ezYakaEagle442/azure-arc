@@ -227,7 +227,7 @@ echo "GKE RG name:" $gke_rg_name
 GKE_ACCOUNT="youremail@groland.grd"
 echo "GKE account :" $GKE_ACCOUNT
 
-GKE_PROJECT="gke-enabled-with-azure-arc"
+GKE_PROJECT="gke-arc-enabled"
 echo "GKE Project :" $GKE_PROJECT
 
 #europe-west4-a | europe-west4-b | europe-west4-c
