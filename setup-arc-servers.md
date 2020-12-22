@@ -85,13 +85,12 @@ Next, set up a service account key, which Terraform will use to create and manag
 
 gcloud iam service-accounts create sa-azure-arc --display-name="Azure Arc for servers Service Account" --description="Azure Arc for servers Service Account"
 gcloud iam service-accounts list
+gcloud iam service-accounts describe sa-azure-arc@$GCP_PROJECT_ID.iam.gserviceaccount.com | grep -i "uniqueId: "
 
 gcloud iam service-accounts keys create ~/gcp-sa-key.json --iam-account sa-azure-arc@$GCP_PROJECT_ID.iam.gserviceaccount.com
 gcloud iam service-accounts keys list --iam-account sa-azure-arc@$GCP_PROJECT_ID.iam.gserviceaccount.com
 
 ```
-
-make sure your SSH keys are available in ~/.ssh and named id_rsa.pub and id_rsa. If you followed the ssh-keygen guide above to create your key then this should already be setup correctly. If not, you may need to modify main.tf to use a key with a different path.
 
 Edit scripts/vars.sh and update each of the variables with the appropriate values.
 
@@ -111,15 +110,56 @@ sed -i "s/{tenant id}/${tenantId}/g" vars.sh
 sed -i "s/{gcp project id}/${GCP_PROJECT_ID}/g" vars.sh
 sed -i "s/{gcp credentials path}/~\/gcp-sa-key.json/g" vars.sh
 
+
+cat <<EOF >> vars.sh
+
+export TF_VAR_gcp_region=europe-west4
+export TF_VAR_gcp_zone=${GKE_ZONE}
+export TF_VAR_admin_username=azarc-admin
+export TF_VAR_admin_password=GrogeuleArcJump666!
+export TF_VAR_azure_location=${location} 
+export TF_VAR_azure_resource_group=rg-${appName}-servers-gcp
+EOF
+
 cat vars.sh
 source ./scripts/vars.sh
 ```
 
+make sure your SSH keys are available in ~/.ssh and named id_rsa.pub and id_rsa. If you followed the ssh-keygen guide above to create your key then this should already be setup correctly. If not, you may need to modify main.tf to use a key with a different path.
+TF does **NOT** support Passphrase
 ```sh
+# Note: if your SSH Key is protected by a Passphrase, you will get an error mesage :
+# Error: Failed to read ssh private key: password protected keys are not supported. Please decrypt the key prior to use.
+# https://github.com/hashicorp/terraform/issues/13734
+# https://github.com/hashicorp/terraform/issues/24898
+ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa -C "youremail@groland.grd"
+```
+
+
+```sh
+
 terraform init
 terraform apply --auto-approve
 
-gcp_vm_ip=$(terraform output)
-ssh arcadmin@$gcp_vm_ip
+# If you get this error :  googleapi: Error 403: Required 'compute.zones.get' permission for 'projects/
+# https://github.com/terraform-google-modules/terraform-google-kubernetes-engine/issues/459
+# https://stackoverflow.com/questions/48232189/google-compute-engine-required-compute-zones-get-permission-error
+# requires roles: roles/compute.instanceAdmin , roles/editor , roles/iam.serviceAccountUser
+gcloud projects add-iam-policy-binding $GCP_PROJECT_ID \
+    --member="serviceAccount:sa-azure-arc@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/compute.instanceAdmin"
+
+gcloud projects add-iam-policy-binding $GCP_PROJECT_ID \
+    --member="serviceAccount:sa-azure-arc@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/editor"
+
+gcloud projects add-iam-policy-binding $GCP_PROJECT_ID \
+    --member="serviceAccount:sa-azure-arc@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/iam.serviceAccountUser"
+
+
+
+gcp_vm_ip=$(terraform output |  tr -d '"'  |  tr -d 'ip =') 
+ssh azarc-admin@$gcp_vm_ip
 
 ```
