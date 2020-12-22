@@ -9,6 +9,8 @@ See :
 ```sh
 # https://cloud.google.com/sdk/gcloud/reference/auth/login
 gcloud auth login $GKE_ACCOUNT
+# sudo /home/$USER/google-cloud-sdk/bin/gcloud components update
+
 gcloud config list
 gcloud config set account $GKE_ACCOUNT
 
@@ -22,18 +24,20 @@ gcloud config list
 
 export KUBECONFIG=gke-config
 
-# You need to enable GKE API, see at https://console.cloud.google.com/apis/api/container.googleapis.com/overview?project=gke-enabled-with-azure-arc
-echo "You need to enable GKE API, see at https://console.cloud.google.com/apis/api/container.googleapis.com/overview?project=gke-enabled-with-azure-arc"
+# You need to enable GKE API, see at https://console.cloud.google.com/apis/api/container.googleapis.com/overview?project=gke-arc-enabled
+echo "You need to enable GKE API, see at https://console.cloud.google.com/apis/api/container.googleapis.com/overview?project=$GKE_PROJECT_ID"
+# https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster
+# https://cloud.google.com/compute/docs/machine-types ==> n1-standard-1 is too small
 gcloud container clusters create $GKE_PROJECT --project $GKE_PROJECT_ID \
     --zone=$GKE_ZONE \
     --node-locations=$GKE_ZONE \
     --disk-type=pd-ssd \
     --disk-size=50GB \
-    --machine-type=n1-standard-1 \
+    --machine-type=n2-standard-4 \
     --num-nodes=1 \
     --image-type ubuntu
 
-# check at https://console.cloud.google.com/kubernetes/list?project=gke-enabled-with-azure-arc
+# check at https://console.cloud.google.com/kubernetes/list?project=gke-arc-enabled
 # you may verified that 3 nodes have been created into the default nodepool, 1 per zone if you did create cluster with --zone europe-west4
 
 gcloud container clusters list --project $GKE_PROJECT_ID
@@ -56,7 +60,7 @@ k create deployment hello-server --image=gcr.io/google-samples/hello-app:1.0
 k expose deployment hello-server --type LoadBalancer --port 80 --target-port 8080
 
 k get pods
-k get service hello-server
+k get service hello-server -o wide
 
 # # https://cloud.google.com/kubernetes-engine/docs/how-to/exposing-apps#creating_a_service_of_type_loadbalancer
 gke_hello_svc_lb_ip=$(k get svc hello-server -o jsonpath="{.status.loadBalancer.ingress[*].ip}")
@@ -121,13 +125,16 @@ git clone $gitops_url
 
 k create namespace $arc_gitops_namespace
 
+# https://docs.fluxcd.io/en/1.17.1/faq.html#will-flux-delete-resources-when-i-remove-them-from-git
+# Will Flux delete resources when I remove them from git?
+# Flux has an garbage collection feature, enabled by passing the command-line flag --sync-garbage-collection to fluxd
 az k8sconfiguration create --name $arc_config_name_gke --cluster-name $azure_arc_gke -g $gke_rg_name --cluster-type connectedClusters \
   --repository-url $gitops_url \
   --enable-helm-operator true \
   --operator-namespace $arc_gitops_namespace \
   --operator-instance-name $arc_operator_instance_name_gke \
   --operator-type flux \
-  --operator-params='--git-poll-interval=1m' \
+  --operator-params='--git-poll-interval=1m --sync-garbage-collection' \
   --scope cluster # namespace
 
 az k8sconfiguration list --cluster-name $azure_arc_gke -g $gke_rg_name --cluster-type connectedClusters
@@ -434,21 +441,16 @@ do
   if [[ "$pod"="^azure-policy.*" ]]
     then
       echo "Verifying Azure-Policy Pod $pod"
-      # k describe pod $pod -n kube-system
-      k logs $pod -n kube-system # | grep -i "Error"
-      # k exec $pod -n kube-system -it -- /bin/sh
+      k logs $pod -n kube-system | grep -i "denied by azurepolicy"
   fi
 done
 
-# Get the GateKeeper pod name installed in gatekeeper-system namespace
 for pod in $(k get po -l gatekeeper.sh/system=yes -n gatekeeper-system -o=custom-columns=:.metadata.name)
 do
   if [[ "$pod"="^gatekeeper.*" ]]
     then
       echo "Verifying GateKeeper Pod $pod"
-      # k describe pod $pod -n gatekeeper-system
-      k logs $pod -n gatekeeper-system  | grep -i "Error"
-      # k exec $pod -n gatekeeper-system -it -- /bin/sh
+      k logs $pod -n gatekeeper-system  | grep -i "denied admission"
   fi
 done
 
@@ -475,7 +477,7 @@ do
   if [[ "$pod"="^azure-policy.*" ]]
     then
       echo "Verifying Azure-Policy Pod $pod"
-      k logs $pod -n kube-system # | grep -i "Error"
+      k logs $pod -n kube-system | grep -i "denied by azurepolicy"
   fi
 done
 
@@ -484,7 +486,7 @@ do
   if [[ "$pod"="^gatekeeper.*" ]]
     then
       echo "Verifying GateKeeper Pod $pod"
-      k logs $pod -n gatekeeper-system  # | grep -i "Error"
+      k logs $pod -n gatekeeper-system  | grep -i "denied admission"
   fi
 done
 
@@ -528,7 +530,8 @@ export KUBECONFIG=gke-config
 k config view --minify
 k config get-contexts
 
-export kubeContext="gke_"$GKE_PROJECT"_"$GKE_ZONE"_"$GKE_PROJECT
+export kubeContext="gke_"$GKE_PROJECT_ID"_"$GKE_ZONE"_"$GKE_PROJECT
+k config use-context $kubeContext
 
 helm uninstall azure-policy-addon
 
@@ -544,7 +547,7 @@ az policy assignment delete --name xxx -g $gke_rg_name
 
 az connectedk8s delete --name $azure_arc_gke -g $gke_rg_name -y
 
-gcloud container clusters delete $GKE_PROJECT --project $GKE_PROJECT --zone=$GKE_ZONE # --node-locations=$GKE_ZONE 
-gcloud projects delete $GKE_PROJECT --name $GKE_PROJECT --verbosity=info -Y
+gcloud container clusters delete $GKE_PROJECT --project $GKE_PROJECT_ID --zone=$GKE_ZONE -Y # --node-locations=$GKE_ZONE 
+gcloud projects delete $GKE_PROJECT_ID --name $GKE_PROJECT --verbosity=info -Y
 
 ```
