@@ -53,5 +53,8 @@ helm repo add azure-policy https://raw.githubusercontent.com/Azure/azure-policy/
 # helmChartName="azuremonitor-containers" / releaseName="azmon-containers-release-1"
 helm repo add https://kubernetes-charts-incubator.storage.googleapis.com
 
+# https://rancher.com/docs/rancher/v2.x/en/installation/install-rancher-on-k8s/
+helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+
 helm repo ls
 ```
