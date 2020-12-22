@@ -189,6 +189,7 @@ sudo apt install jq
 
 ```
 [Install AZ CLI in VM](tools.md)
+[Install Azure Arc CLI extension](setup-prereq.md#install-azure-arc-cli-extension)
 [Install HELM in VM](tools.md#how-to-install-helm-on-ubuntu-or-wsl)
 [Configure HELM in VM](setup-helm.md)
 
@@ -197,10 +198,14 @@ sudo apt install jq
 ```sh
 
 # Installing k3s to /usr/local/bin/k3s
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--bind-address $k3s_vm_pub_ip --advertise-address $k3s_vm_pub_ip --disable=traefik --kube-apiserver-arg default-not-ready-toleration-seconds=10 --kube-apiserver-arg default-unreachable-toleration-seconds=10 --kube-controller-arg node-monitor-period=10s --kube-controller-arg node-monitor-grace-period=10s --kubelet-arg node-status-update-frequency=5s" sh -
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik --kube-apiserver-arg default-not-ready-toleration-seconds=10 --kube-apiserver-arg default-unreachable-toleration-seconds=10 --kube-controller-arg node-monitor-period=10s --kube-controller-arg node-monitor-grace-period=10s --kubelet-arg node-status-update-frequency=5s" sh - # --bind-address $k3s_vm_pub_ip_address --advertise-address $k3s_vm_pub_ip_address
 # wget -q -O - https://raw.githubusercontent.com/rancher/k3s/master/install.sh | sh -
 service k3s status
 k3s --version
+
+# check logs
+journalctl -u k3s
+cat /var/log/syslog | grep k3s
 
 sudo ls -al /usr/local/bin/k3s
 
@@ -235,6 +240,8 @@ k get ing -A
 # Check at https://localhost:6443 | https://$k3s_network_interface_pub_ip:6443
 token_secret_value=`sudo cat /var/lib/rancher/k3s/server/node-token`
 
+# Since 1.19  K3S provides client certificate auth no more usr/pwd, see https://github.com/k3s-io/k3s/issues/1616
+# https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.19.md#no-really-you-must-read-this-before-you-upgrade
 k3s_usr=$(k config view -o json | jq -Mr '.users[0].user.username')
 k3s_pwd=$(k config view -o json | jq -Mr '.users[0].user.password')
 echo "K3S User " $k3s_usr
@@ -248,7 +255,8 @@ echo "Now please Update the server: with the external URL of the Load Balancer "
 echo "replacing server: https://127.0.0.1:6443 "
 echo "with server: https://k3s."${k3s_lb_pub_ip_address}".xip.io:6443 "
 
-sudo vim /etc/rancher/k3s/k3s.yaml
+# sudo sed -i "s/127.0.0.1/${k3s_lb_pub_ip_address}/g" /etc/rancher/k3s/k3s.yaml 
+# sudo vim /etc/rancher/k3s/k3s.yaml
 
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 sudo cp /etc/rancher/k3s/k3s.yaml /home/$k3s_admin_username/.kube/config
@@ -321,16 +329,15 @@ Since port 80 is taken by Traefik (read more about here), the deployment LoadBal
 git clone https://github.com/ezYakaEagle442/azure-arc
 
 k apply -f ./app/hello-kubernetes.yaml
+k get deploy
+k get po
+
 hello_svc_cluster_ip=$(k get svc hello-kubernetes -o=custom-columns=":spec.clusterIP")
 curl http://$hello_svc_cluster_ip:32380
 
 hello_svc_lb_ip=$(k get svc/hello-kubernetes -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
 curl http://$hello_svc_lb_ip:32380
 echo "Test from your browser : http://$k3s_lb_pub_ip_address:32380/hello-kubernetes"
-
-
-k get deploy
-k get po
 
 
 ```
@@ -387,13 +394,16 @@ git clone $gitops_url
 
 k create namespace $arc_gitops_namespace
 
+# https://docs.fluxcd.io/en/1.17.1/faq.html#will-flux-delete-resources-when-i-remove-them-from-git
+# Will Flux delete resources when I remove them from git?
+# Flux has an garbage collection feature, enabled by passing the command-line flag --sync-garbage-collection to fluxd
 az k8sconfiguration create --name $arc_config_name_k3s --cluster-name $azure_arc_k3s -g $k3s_rg_name --cluster-type connectedClusters \
   --repository-url $gitops_url \
   --enable-helm-operator true \
   --operator-namespace $arc_gitops_namespace \
   --operator-instance-name $arc_operator_instance_name_k3s \
   --operator-type flux \
-  --operator-params='--git-poll-interval=1m' \
+  --operator-params='--git-poll-interval=1m --sync-garbage-collection' \
   --scope cluster # namespace
 
 az k8sconfiguration list --cluster-name $azure_arc_k3s -g $k3s_rg_name --cluster-type connectedClusters
@@ -626,23 +636,19 @@ do
   if [[ "$pod"="^azure-policy.*" ]]
     then
       echo "Verifying Azure-Policy Pod $pod"
-      # k describe pod $pod -n kube-system
-      k logs $pod -n kube-system # | grep -i "Error"
-      # k exec $pod -n kube-system -it -- /bin/sh
+      k logs $pod -n kube-system | grep -i "denied by azurepolicy"
   fi
 done
 
-# Get the GateKeeper pod name installed in gatekeeper-system namespace
 for pod in $(k get po -l gatekeeper.sh/system=yes -n gatekeeper-system -o=custom-columns=:.metadata.name)
 do
   if [[ "$pod"="^gatekeeper.*" ]]
     then
       echo "Verifying GateKeeper Pod $pod"
-      # k describe pod $pod -n gatekeeper-system
-      k logs $pod -n gatekeeper-system  | grep -i "Error"
-      # k exec $pod -n gatekeeper-system -it -- /bin/sh
+      k logs $pod -n gatekeeper-system  | grep -i "denied admission"
   fi
 done
+
 
 ```
 [Assign a built-in policy definition](https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json#assign-a-built-in-policy-definition)
@@ -722,6 +728,11 @@ az policy definition delete --name "k3s-gitops-enforcement"
 az policy assignment delete --name xxx -g $k3s_rg_name
 
 az connectedk8s delete --name $azure_arc_k3s -g $k3s_rg_name -y
+
+# unsinstall k3S : https://rancher.com/docs/k3s/latest/en/installation/uninstall/
+/usr/local/bin/k3s-uninstall.sh
+# /usr/local/bin/k3s-agent-uninstall.sh
+
 
 az vm delete --name $k3s_vm_name -g $k3s_rg_name -y
 az network nic delete --name nic-k3s -g $k3s_rg_name
