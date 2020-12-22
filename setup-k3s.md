@@ -242,13 +242,41 @@ token_secret_value=`sudo cat /var/lib/rancher/k3s/server/node-token`
 
 # Since 1.19  K3S provides client certificate auth no more usr/pwd, see https://github.com/k3s-io/k3s/issues/1616
 # https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.19.md#no-really-you-must-read-this-before-you-upgrade
+
+# https://github.com/k3s-io/k3s/issues/2342#issuecomment-703830567
+# Support for Basic authentication has been removed from upstream Kubernetes. 
+# Note that this is not just deprecated or disabled, but deleted from the codebase in 1.19: kubernetes/kubernetes#89069
 k3s_usr=$(k config view -o json | jq -Mr '.users[0].user.username')
 k3s_pwd=$(k config view -o json | jq -Mr '.users[0].user.password')
 echo "K3S User " $k3s_usr
 echo "K3S PWD " $k3s_pwd
 
+
+# Get all certificates
+# https://gist.github.com/xueshanf/71f188c58553c82bda16f80483e71918
+
+k config view --raw
+k config view --minify --raw --output 'jsonpath={..cluster.certificate-authority-data}' | base64 -d > k3s-server-ca.crt # | openssl x509 -text -out -)
+cat k3s-server-ca.crt
+
+k config view --minify --raw --output 'jsonpath={..user.client-certificate-data}' | base64 -d > k3s-admin-user.crt # | openssl x509 -text -out -)
+cat k3s-admin-user.crt
+
+k config view --minify --raw --output 'jsonpath={..user.client-key-data}' | base64 -d > k3s-admin-user-key.key
+cat k3s-admin-user-key.key
+
+# Check the certificates with SSLShopper : https://www.sslshopper.com/certificate-decoder.html
+# `cat k3s-server-ca.crt > k3s-admin-user.crt`
+
+# https://medium.com/better-programming/k8s-tips-give-access-to-your-clusterwith-a-client-certificate-dfb3b71a76fe
+# https://kubernetes.io/docs/reference/access-authn-authz/authentication/#x509-client-certs
+k config set-credentials k3s-admin \
+  --client-key=k3s-admin-user-key.key \
+  --client-certificate=k3s-admin-user.crt \
+  --embed-certs=false
+
 # curl -k https://localhost:6443/api/v1/namespaces -H "Authorization: Bearer $token_secret_value" -H 'Accept: application/json'
-curl -k https://localhost:6443/api/v1/namespaces  --user $k3s_usr:$k3s_pwd -H 'Accept: application/json'
+curl -k https://localhost:6443/api/v1/namespaces -H 'Accept: application/json' --cert k3s-admin-user.crt --key k3s-admin-user-key.key  #--user $k3s_usr:$k3s_pwd 
 
 sudo cat /etc/rancher/k3s/k3s.yaml
 echo "Now please Update the server: with the external URL of the Load Balancer "
