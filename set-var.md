@@ -149,6 +149,9 @@ echo "K3S LB name :" $k3s_lb
 aks_rg_name="rg-${appName}-aks-${location}" 
 echo "AKS RG name:" $aks_rg_name 
 
+cluster_rg_name="rg-managed-cluster-${appName}-${location}" 
+echo "AKS Cluster RG name:" $cluster_rg_name 
+
 # target : version 1.17.4
 # az aks get-versions --location $location --query '(orchestrators[?isPreview==null].orchestratorVersion)[-2]' -o tsv
 aks_version=$(az aks get-versions -l $location --query 'orchestrators[-4].orchestratorVersion' -o tsv) 
@@ -234,6 +237,11 @@ echo "GKE Project :" $GKE_PROJECT
 GKE_ZONE="europe-west4-a"
 echo "GKE Zone :" $GKE_ZONE
 
+```
+## GCP VM
+```sh
+GCP_PROJECT="gcp-vm-arc-enabled"
+echo "GCP Project :" $GCP_PROJECT
 ```
 
 ## Extra variables
