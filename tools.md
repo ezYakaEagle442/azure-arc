@@ -185,7 +185,7 @@ sudo apt-get update
 apt search azure-cli 
 apt-cache search azure-cli 
 apt list azure-cli -a
-sudo apt-get install azure-cli # azure-cli=2.5.1-1~bionic
+sudo apt-get install azure-cli # azure-cli=2.16.0-1~bionic
 
 sudo apt-get update && sudo apt-get install --only-upgrade -y azure-cli
 sudo apt-get upgrade azure-cli
