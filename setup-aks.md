@@ -98,6 +98,7 @@ To learn more about UDR, see [https://docs.microsoft.com/en-us/azure/virtual-net
 
 az aks create --name $aks_cluster_name \
     --resource-group $aks_rg_name \
+    --node-resource-group $ $cluster_rg_name \
     --node-count 1 \
     --location $location \
     --vnet-subnet-id $aks_subnet_id \
@@ -110,11 +111,11 @@ az aks create --name $aks_cluster_name \
     --admin-username $aks_admin_username \
     --load-balancer-sku standard \
     --vm-set-type VirtualMachineScaleSets \
-    --ssh-key-value ~/.ssh/${ssh_key}.pub \
     --outbound-type loadBalancer \
     --service-principal $aks_sp_id \
     --client-secret $aks_sp_password \
     --attach-acr $acr_registry_name \
+    --ssh-key-value ~/.ssh/${ssh_key}.pub \
     --verbose
 
 aks_client_id=$(az aks show --resource-group $aks_rg_name --name $aks_cluster_name --query "servicePrincipalProfile.clientId" --output tsv)
@@ -221,6 +222,25 @@ k get rolebindings --all-namespaces
 k get ingresses  --all-namespaces
 ```
 
+### Setup NSG 
+```sh
+
+aks_nsg="aks-nsg-management"
+az network nsg create --name $aks_nsg -g $aks_rg_name --location $location
+
+az network nsg rule create --access Allow --destination-port-range 22 --source-address-prefixes Internet --name "Allow SSH from Internet" --nsg-name $aks_nsg -g $aks_rg_name --priority 100
+
+az network nsg rule create --access Allow --destination-port-range 6443 --source-address-prefixes Internet --name "Allow 6443 from Internet" --nsg-name $aks_nsg -g $aks_rg_name --priority 110
+
+az network nsg rule create --access Allow --destination-port-range 80 --source-address-prefixes Internet --name "Allow 80 from Internet" --nsg-name $aks_nsg -g $aks_rg_name --priority 120
+
+az network nsg rule create --access Allow --destination-port-range 8080 --source-address-prefixes Internet --name "Allow 8080 from Internet" --nsg-name $aks_nsg -g $aks_rg_name --priority 130
+
+az network nsg rule create --access Allow --destination-port-range 32380 --source-address-prefixes Internet --name "Allow 32380 from Internet" --nsg-name $aks_nsg -g $aks_rg_name --priority 140
+
+az network nsg rule create --access Allow --destination-port-range 32333 --source-address-prefixes Internet --name "Allow 32333 from Internet" --nsg-name $aks_nsg -g $aks_rg_name --priority 150
+
+az network vnet subnet update --name $aks_subnet_name --network-security-group $aks_nsg --vnet-name $aks_vnet_name -g $aks_rg_name
 
 ## Deploy a dummy App.
 
@@ -301,13 +321,16 @@ git clone $gitops_url
 
 k create namespace $arc_gitops_namespace
 
+# https://docs.fluxcd.io/en/1.17.1/faq.html#will-flux-delete-resources-when-i-remove-them-from-git
+# Will Flux delete resources when I remove them from git?
+# Flux has an garbage collection feature, enabled by passing the command-line flag --sync-garbage-collection to fluxd
 az k8sconfiguration create --name $arc_config_name_aks --cluster-name $azure_arc_aks -g $aks_rg_name --cluster-type managedClusters \
   --repository-url $gitops_url \
   --enable-helm-operator true \
   --operator-namespace $arc_gitops_namespace \
   --operator-instance-name $arc_operator_instance_name_aks \
   --operator-type flux \
-  --operator-params='--git-poll-interval=1m' \
+  --operator-params='--git-poll-interval=1m --sync-garbage-collection' \
   --scope cluster # namespace
 
 az k8sconfiguration list --cluster-name $azure_arc_aks -g $aks_rg_name --cluster-type managedClusters
@@ -584,7 +607,7 @@ k describe k8sazurecontainernoprivilege.constraints.gatekeeper.sh $container_no_
 # https://github.com/Azure/azure-policy/tree/master/samples/KubernetesService
 # https://github.com/Azure/azure-policy/tree/master/built-in-policies/policyDefinitions/Kubernetes%20service
 # https://raw.githubusercontent.com/Azure/azure-policy/master/built-in-references/Kubernetes/container-no-privilege/template.yaml
-# https://github.com/open-policy-agent/gatekeeper/tree/master/library/pod-security-policy/privileged-containers
+# https://github.com/open-policy-agent/gatekeeper/tree/master/library/pod-security-policy/privileged-containers replaced by https://github.com/open-policy-agent/gatekeeper-library/tree/master/library/general
 
 # Try to deploy a "bad" Pod
 k apply -f app/root-pod.yaml
