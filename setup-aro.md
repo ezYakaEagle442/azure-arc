@@ -257,13 +257,16 @@ git clone $gitops_url
 
 oc create namespace $arc_gitops_namespace
 
+# https://docs.fluxcd.io/en/1.17.1/faq.html#will-flux-delete-resources-when-i-remove-them-from-git
+# Will Flux delete resources when I remove them from git?
+# Flux has an garbage collection feature, enabled by passing the command-line flag --sync-garbage-collection to fluxd
 az k8sconfiguration create --name $arc_config_name_aro --cluster-name $azure_arc_aro -g $aro_rg_name --cluster-type connectedClusters \
   --repository-url $gitops_url \
   --enable-helm-operator true \
   --operator-namespace $arc_gitops_namespace \
   --operator-instance-name $arc_operator_instance_name_aro \
   --operator-type flux \
-  --operator-params='--git-poll-interval=1m' \
+  --operator-params='--git-poll-interval=1m --sync-garbage-collection' \
   --scope cluster # namespace
 
 az k8sconfiguration list --cluster-name $azure_arc_aro -g $aro_rg_name --cluster-type connectedClusters
