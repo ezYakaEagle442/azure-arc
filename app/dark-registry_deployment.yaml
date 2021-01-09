@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dark-registry-malware
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: dark-registry-malware
+  template:
+    metadata:
+      labels:
+        app: dark-registry-malware
+    spec:
+      containers:
+      - name: dark-registry-malware
+        image: hub.dark-registry.grd/hacked-image:wip
+        command: ['sh', '-c', 'while true;do date;echo hello;sleep 10;done']
+        resources:
+          requests:
+            memory: "12Mi"
+            cpu: "100m"
+          limits:
+            memory: "20Mi"
+            cpu: "100m"
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: workdir
+          mountPath: /tmp/
+      volumes:
+      - name: workdir
+        emptyDir: {}

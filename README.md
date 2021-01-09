@@ -34,3 +34,4 @@ See also :
 1. Setup [AKS cluster](setup-aks.md)
 1. Setup [ARO cluster](setup-aro.md)
 1. Setup [GKE cluster](setup-gke.md)
+1. Setup [Azure Arc for server](setup-arc-servers.md)

@@ -131,6 +131,7 @@ k create namespace $arc_gitops_namespace
 az k8sconfiguration create --name $arc_config_name_gke --cluster-name $azure_arc_gke -g $gke_rg_name --cluster-type connectedClusters \
   --repository-url $gitops_url \
   --enable-helm-operator true \
+  --helm-operator-params '--set helm.versions=v3' \
   --operator-namespace $arc_gitops_namespace \
   --operator-instance-name $arc_operator_instance_name_gke \
   --operator-type flux \

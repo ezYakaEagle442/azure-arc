@@ -163,3 +163,168 @@ gcp_vm_ip=$(terraform output |  tr -d '"'  |  tr -d 'ip =')
 ssh azarc-admin@$gcp_vm_ip
 
 ```
+
+# Unified Operations Use Cases
+
+## Update Management
+
+[https://docs.microsoft.com/en-us/azure/automation/update-management/overview](https://docs.microsoft.com/en-us/azure/automation/update-management/overview)
+
+```sh
+
+#  create a Log Analytics workspace
+az group create --name rg-arc-update-management --location $location \
+--tags "Project=jumpstart_azure_arc_servers"
+
+# To deploy the ARM template, navigate to the deployment folder and run the below command:
+az deployment group create --resource-group rg-arc-update-management \
+    --template-file law-template.json \
+    --parameters law-template.parameters.json
+
+```
+
+## Azure Policy
+
+[https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/day2/arc_policies_mma](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/day2/arc_policies_mma)
+
+move to the Deployment Directory at [https://github.com/microsoft/azure_arc/tree/main/azure_arc_servers_jumpstart/policies/arm](https://github.com/microsoft/azure_arc/tree/main/azure_arc_servers_jumpstart/policies/arm)
+
+You will also need to have a Log Analytics workspace deployed. You can automate the deployment by editing the ARM template parameters file, provide a name and location for your workspace.
+
+```sh
+az deployment group create --resource-group rg-${appName}-servers-gcp \
+  --template-file policies/arm/log_analytics-template.json \
+  --parameters policies/arm/log_analytics-template.parameters.json
+```
+
+Now that you have all the prerequisites set, you can assign policies to our Arc connected machines. Edit the parameters file to provide your subscription ID as well as the Log Analytics workspace.
+
+```sh
+
+az policy assignment create --name 'Enable Azure Monitor for VMs' \
+--scope '/subscriptions/$subId/resourceGroups/rg-$appName-servers-gcp' \
+--policy-set-definition '55f3eceb-5573-4f18-9695-226972c6d74a' \
+-p policies/arm/policy.json \
+--assign-identity --location $location
+
+```
+
+See also [Azure Compute Built-in Policies](https://docs.microsoft.com/en-us/azure/governance/policy/samples/built-in-policies#compute) 
+
+
+## Azure Security Center
+
+[https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/day2/arc_securitycenter](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/day2/arc_securitycenter)
+
+Data collected by Azure Security Center is stored in a Log Analytics workspace. You can either use the default one created by ASC or a custom one created by you. If you want to create a dedicated workspace, you can automate the deployment by editing the ARM template parameters file, provide a name and location for your workspace:
+
+```sh
+
+az deployment group create --resource-group rg-${appName}-servers-gcp \
+  --template-file securitycenter/arm/log_analytics-template.json \
+  --parameters securitycenter/arm/log_analytics-template.parameters.json
+
+az security workspace-setting create --name default \
+  --target-workspace '/subscriptions/<Your subscription ID>/resourceGroups/<Name of the Azure resource group>/providers/Microsoft.OperationalInsights/workspaces/<Name of the Log Analytics Workspace>'
+
+```
+
+Select the Azure Security Center tier. The Free tier is enabled on all your Azure subscriptions by default and will provide continuous security assessment and actionable security recommendations. In this guide, you will use the Standard tier for Virtual Machines that extends these capabilities providing unified security management and threat protection across your hybrid cloud workloads. To enable the Standard tier of Azure Security Center for VMs run the command below:
+
+```sh
+az security pricing create -n VirtualMachines --tier 'standard'
+```
+
+Now you need to assign the default Security Center policy initiative. ASC makes its security recommendations based on policies. There is an specific initiative that groups Security Center policies with the definition ID ‘1f3afdf9-d0c9-4c3d-847f-89da613e70a8’. The command below will assign the ASC initiative to your subscription:
+```sh
+az policy assignment create --name 'ASC Default <Your subscription ID>' \
+--scope '/subscriptions/<Your subscription ID>' \
+--policy-set-definition '1f3afdf9-d0c9-4c3d-847f-89da613e70a8'
+```
+
+In the “Compute & apps” section under “VM and Servers”, ASC will provide you with an overview of all the discovered security recommendations for your VMs and computers, including Azure VMs, Azure Classic VMs, servers and Azure Arc Machines.
+
+
+
+## Apply inventory tagging to Azure Arc enabled servers
+
+[https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/day2/arc_inventory_tagging](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/day2/arc_inventory_tagging)
+
+
+Enter “Resource Graph Explorer” in the top search bar in the Azure portal and select it.
+In the query window, enter the following query and then click “Run Query”:
+```sh
+Resources
+| where type =~ 'Microsoft.HybridCompute/machines'
+```
+
+Create a basic Azure tag taxonomy
+
+```sh
+az tag create --name "Hosting Platform"
+az tag add-value --name "Hosting Platform" --value "Azure"
+az tag add-value --name "Hosting Platform" --value "AWS"
+az tag add-value --name "Hosting Platform" --value "GCP"
+az tag add-value --name "Hosting Platform" --value "On-premises"
+```
+
+[Tag Arc-connected GCP Ubuntu server](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/day2/arc_inventory_tagging/#tag-arc-connected-gcp-ubuntu-server)
+```sh
+export gcpResourceGroup="arc-gcp-demo"
+export gcpMachineName="arc-gcp-demo"
+export gcpMachineResourceId="$(az resource show --resource-group rg-${appName}-servers-gcp --name arc-gcp-demo --resource-type "Microsoft.HybridCompute/machines" --query id)"
+export gcpMachineResourceId="$(echo $gcpMachineResourceId | tr -d "\"" | tr -d '\r')"
+az resource tag --resource-group rg-${appName}-servers-gcp --ids $gcpMachineResourceId --tags "Hosting Platform"="GCP"
+
+# Use '' to clear existing tags.
+# az resource tag --resource-group rg-${appName}-servers-gcp --ids $gcpMachineResourceId --tags ''
+```
+
+Query resources by tag using Resource Graph Explorer. In the query window, enter the following query:
+```sh
+Resources
+| where type =~ 'Microsoft.HybridCompute/machines'
+| where isnotempty(tags['Hosting Platform'])
+| project name, location, resourceGroup, tags
+```
+
+
+## Enable Change Tracking and Inventory
+
+[https://docs.microsoft.com/en-us/azure/automation/change-tracking/overview](https://docs.microsoft.com/en-us/azure/automation/change-tracking/overview)
+
+```sh
+sudo apt-get update
+sudo apt-get install -y python2
+python -h
+python -V
+
+```
+
+## Deploy Monitoring Agent Extension on Azure Arc Linux and Windows servers using Extension Management
+```sh
+az deployment group create --resource-group rg-${appName}-servers-gcp \
+  --template-file extensions/arm/log_analytics-template.json \
+  --parameters extensions/arm/log_analytics-template.parameters.json
+
+az monitor log-analytics workspace list
+az monitor log-analytics workspace show -n log-azarc-mma -g rg-${appName}-servers-gcp --verbose
+
+# -o tsv to manage quotes issues
+mma_analytics_workspace_id=$(az monitor log-analytics workspace show -n log-azarc-mma -g rg-${appName}-servers-gcp --query id -o tsv)
+echo "MMA analytics_workspace_id:" $mma_analytics_workspace_id
+
+mma_analytics_workspace_key=$(az monitor log-analytics workspace get-shared-keys -n log-azarc-mma -g rg-${appName}-servers-gcp --query primarySharedKey -o tsv)
+echo "MMA analytics_workspace_key:" $mma_analytics_workspace_key
+
+# Edit the extensions parameters file at extensions/arm/mma-template.parameters.json to set workspace ID and key
+az deployment group create --resource-group rg-${appName}-servers-gcp \
+  --template-file extensions/arm/mma-template-linux.json \
+  --parameters extensions/arm/mma-template.parameters.json
+
+
+```
+
+```sh
+
+```
