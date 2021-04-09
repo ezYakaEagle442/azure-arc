@@ -359,17 +359,21 @@ az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_
 export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_rg_name --query id)
 echo "analytics_workspace_id:" $analytics_workspace_id
 
-curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
-
 # https://github.com/Azure/azure-cli/issues/8401 --query id ==> -o tsv is NECESSARY
 export azureArc_gke_ClusterResourceId=$(az connectedk8s show -g $gke_rg_name --name $azure_arc_gke --query id -o tsv)
 
 k config view --minify
 k config get-contexts
-
 export kubeContext="gke_"$GKE_PROJECT"_"$GKE_ZONE"_"$GKE_PROJECT #"<kubeContext name of your k8s cluster>"
 
-bash enable-monitoring.sh --resource-id $azureArc_gke_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
+# curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
+# bash enable-monitoring.sh --resource-id $azureArc_gke_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
+
+az k8s-extension create --name azuremonitor-containers --cluster-name $azure_arc_gke --resource-group $gke_rg_name --cluster-type connectedClusters --extension-type Microsoft.AzureMonitor.Containers --configuration-settings logAnalyticsWorkspaceResourceID=$analytics_workspace_id omsagent.resources.daemonset.limits.cpu=150m omsagent.resources.daemonset.limits.memory=600Mi omsagent.resources.deployment.limits.cpu=1 omsagent.resources.deployment.limits.memory=750Mi
+
+az k8s-extension list --cluster-name $azure_arc_gke --resource-group $gke_rg_name --cluster-type connectedClusters 
+azmon_extension_state=$(az k8s-extension show --name azuremonitor-containers --cluster-name $azure_arc_gke --resource-group $gke_rg_name --cluster-type connectedClusters --query 'installState')
+echo "Azure Monitor extension state: " $azmon_extension_state
 
 ```
 Verify :
@@ -550,9 +554,10 @@ k config use-context $kubeContext
 
 helm uninstall azure-policy-addon
 
-curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
-bash disable-monitoring.sh --resource-id $azureArc_gke_ClusterResourceId --kube-context $kubeContext
+# curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
+# bash disable-monitoring.sh --resource-id $azureArc_gke_ClusterResourceId --kube-context $kubeContext
 # az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $common_rg_name
+az k8s-extension delete --name azuremonitor-containers --cluster-type connectedClusters --cluster-name $gke_cluster_name  -g $gke_rg_name
 
 az k8s-configuration delete --name "$arc_config_name_gke-azure-voting-app" --cluster-name $azure_arc_gke --cluster-type connectedClusters -g $gke_rg_name -y
 az k8s-configuration delete --name $arc_config_name_gke --cluster-name $azure_arc_gke --cluster-type connectedClusters -g $gke_rg_name -y

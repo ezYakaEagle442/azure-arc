@@ -437,9 +437,9 @@ Other option you can use CLI to apply this policy running the snippet below.
 Assure-GitOps-endpoint-for-Kubernetes-cluster.json
 
 az policy definition list | grep -i "kubernetes"  
-az policy definition create --name "gke-gitops-enforcement"
-                            --description "Ensure to deploy GitOps to Kubernetes cluster"
-                            --display-name "gke-gitops-enforcement"
+az policy definition create --name "aks-gitops-enforcement"
+                            --description "Ensure to deploy GitOps to AKS Kubernetes cluster"
+                            --display-name "aks-gitops-enforcement"
                             [--management-group]
                             [--metadata]
                             [--mode]
@@ -447,9 +447,9 @@ az policy definition create --name "gke-gitops-enforcement"
                             [--rules]
                             [--subscription]
 
-az policy assignment list -g $gke_rg_name -g $gke_rg_name
+az policy assignment list -g $aks_rg_name
 
-gitOpsAssignmentId=$(az policy assignment show --name xxx -g $gke_rg_name --query id)
+gitOpsAssignmentId=$(az policy assignment show --name xxx -g $aks_rg_name --query id)
 
 # Create a remediation for a specific assignment
 az policy remediation start ...
@@ -467,25 +467,24 @@ See the [doc](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/cont
 - To enable and access the features in Azure Monitor for containers, at a minimum you need to be a member of the Azure Contributor role in the Azure subscription, and a member of the Log Analytics Contributor role of the Log Analytics workspace configured with Azure Monitor for containers.
 - You are a member of the Contributor role on the Azure Arc cluster resource.
 - To view the monitoring data, you are a member of the Log Analytics reader role permission with the Log Analytics workspace configured with Azure Monitor for containers.
-- 
+- [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/extensions#prerequisites](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/extensions#prerequisites)
 
 ### Setup
 
 <span style="color:red">/!\ IMPORTANT </span> : The same analytics workspace is shared for all k8s clusters, do not recreate it if it was already created in previous use case.
 
 ```sh
-az monitor log-analytics workspace create -n $analytics_workspace_name --location $location -g $common_rg_name --verbose
+az monitor log-analytics workspace create -n $analytics_workspace_name --location $location -g $aks_rg_name --verbose
 az monitor log-analytics workspace list
-az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_rg_name --verbose
+az monitor log-analytics workspace show -n $analytics_workspace_name -g $aks_rg_name --verbose
 
 # -o tsv to manage quotes issues
-export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_rg_name --query id -o tsv)
+export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $aks_rg_name --query id -o tsv)
 echo "analytics_workspace_id:" $analytics_workspace_id
 
 # https://github.com/Azure/azure-cli/issues/9228
-az aks enable-addons --addons monitoring --name $aks_cluster_name --workspace-resource-id $analytics_workspace_id -g $aks_rg_name  # --subscription $subId
+# az aks enable-addons --addons monitoring --name $aks_cluster_name --workspace-resource-id $analytics_workspace_id -g $aks_rg_name  # --subscription $subId
 
-curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
 # export azureArc_AKS_ClusterResourceId=$(az connectedk8s show -g $aks_rg_name --name $azure_arc_aks --query id)
 export azureArc_AKS_ClusterResourceId=$(az aks show -n $aks_cluster_name -g $aks_rg_name --query 'id' -o tsv)
 
@@ -493,9 +492,25 @@ k config view --minify
 k config get-contexts
 k config current-context
 k config use-context $kubeContext
-bash enable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
+
+# curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
+# bash enable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
+
 helm ls --kube-context $kubeContext -v=10
 helm search repo azuremonitor-containers
+
+az k8s-extension create --name azuremonitor-containers --cluster-name $aks_cluster_name --resource-group $aks_rg_name --cluster-type connectedClusters --extension-type Microsoft.AzureMonitor.Containers --configuration-settings logAnalyticsWorkspaceResourceID=$analytics_workspace_id omsagent.resources.daemonset.limits.cpu=150m omsagent.resources.daemonset.limits.memory=600Mi omsagent.resources.deployment.limits.cpu=1 omsagent.resources.deployment.limits.memory=750Mi
+
+az k8s-extension list --cluster-name $aks_cluster_name --resource-group $aks_rg_name --cluster-type connectedClusters 
+azmon_extension_state=$(az k8s-extension show --name azuremonitor-containers --cluster-name $aks_cluster_name --resource-group $aks_rg_name --cluster-type connectedClusters --query 'installState')
+echo "Azure Monitor extension state: " $azmon_extension_state
+
+# with ARM
+curl -L https://aka.ms/arc-k8s-azmon-extension-arm-template -o arc-k8s-azmon-extension-arm-template.json
+curl -L https://aka.ms/arc-k8s-azmon-extension-arm-template-params -o  arc-k8s-azmon-extension-arm-template-params.json
+
+az deployment group create --resource-group  $aks_rg_name --template-file ./arc-k8s-azmon-extension-arm-template.json --parameters @./arc-k8s-azmon-extension-arm-template-params.json
+
 
 ```
 Verify :
@@ -656,14 +671,16 @@ export kubeContext=$aks_cluster_name
 
 helm uninstall azure-policy-addon
 
-az aks disable-addons -a monitoring -n $aks_cluster_name -g $aks_rg_name
+# az aks disable-addons -a monitoring -n $aks_cluster_name -g $aks_rg_name
 
-curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
-bash disable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --kube-context $kubeContext
-# az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $common_rg_name
+# curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
+# bash disable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --kube-context $kubeContext
+# az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $aks_rg_name
 
-helm uninstall azuremonitor-containers
-helm uninstall azmon-containers-release-1
+az k8s-extension delete --name azuremonitor-containers --cluster-type connectedClusters --cluster-name $aks_cluster_name  -g $aks_rg_name
+
+# helm uninstall azuremonitor-containers
+# helm uninstall azmon-containers-release-1
 
 k delete ds omsagent -n kube-system
 k delete ds omsagent-win -n kube-system
@@ -696,7 +713,7 @@ az k8s-configuration delete --name "$arc_config_name_aks-azure-voting-app" --clu
 az k8s-configuration delete --name $arc_config_name_aks --cluster-name $azure_arc_aks --cluster-type managedClusters -g $aks_rg_name -y
 
 # az policy definition delete --name "aks-gitops-enforcement"
-az policy assignment delete --name xxx -g $gke_rg_name
+az policy assignment delete --name xxx -g $aks_rg_name
 
 az connectedk8s delete --name $azure_arc_aks -g $aks_rg_name -y
 

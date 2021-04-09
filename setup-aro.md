@@ -484,14 +484,12 @@ See the [doc](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/cont
 
 ```sh
 az monitor log-analytics workspace list
-az monitor log-analytics workspace create -n $analytics_workspace_name --location $location -g $common_rg_name --verbose
+az monitor log-analytics workspace create -n $analytics_workspace_name --location $location -g $aro_rg_name --verbose
 az monitor log-analytics workspace list
-az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_rg_name --verbose
+az monitor log-analytics workspace show -n $analytics_workspace_name -g $aro_rg_name --verbose
 
-export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_rg_name --query id)
+export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $aro_rg_name --query id)
 echo "analytics_workspace_id:" $analytics_workspace_id
-
-curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
 
 # https://github.com/Azure/azure-cli/issues/8401 --query id ==> -o tsv is NECESSARY
 export azureArc_aro_ClusterResourceId=$(az connectedk8s show -g $aro_rg_name --name $azure_arc_aro --query id -o tsv)
@@ -501,8 +499,15 @@ oc config get-contexts
 oc config view --minify
 oc config current-context
 
+# curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
+# bash enable-monitoring.sh --resource-id $azureArc_aro_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
 
-bash enable-monitoring.sh --resource-id $azureArc_aro_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
+az k8s-extension create --name azuremonitor-containers --cluster-name $aro_cluster_name --resource-group $aro_rg_name --cluster-type connectedClusters --extension-type Microsoft.AzureMonitor.Containers --configuration-settings logAnalyticsWorkspaceResourceID=$analytics_workspace_id omsagent.resources.daemonset.limits.cpu=150m omsagent.resources.daemonset.limits.memory=600Mi omsagent.resources.deployment.limits.cpu=1 omsagent.resources.deployment.limits.memory=750Mi
+
+az k8s-extension list --cluster-name $aro_cluster_name --resource-group $aro_rg_name --cluster-type connectedClusters 
+azmon_extension_state=$(az k8s-extension show --name azuremonitor-containers --cluster-name $aro_cluster_name --resource-group $aro_rg_name --cluster-type connectedClusters --query 'installState')
+echo "Azure Monitor extension state: " $azmon_extension_state
+
 
 ```
 Verify :
@@ -677,11 +682,13 @@ az k8s-configuration delete --name "$arc_config_name_aro-azure-voting-app" --clu
 az k8s-configuration delete --name $arc_config_name_aro --cluster-name $azure_arc_aro --cluster-type connectedClusters -g $aro_rg_name -y
 
 az policy definition delete --name "aro-gitops-enforcement"
-az policy assignment delete --name xxx -g $gke_rg_name
+az policy assignment delete --name xxx -g $aro_rg_name
 
-curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
-bash disable-monitoring.sh --resource-id $azureArc_aro_ClusterResourceId --kube-context $kubeContext
-# az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $common_rg_name
+# curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
+# bash disable-monitoring.sh --resource-id $azureArc_aro_ClusterResourceId --kube-context $kubeContext
+# az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $aro_rg_name
+
+az k8s-extension delete --name azuremonitor-containers --cluster-type connectedClusters --cluster-name $aro_cluster_name  -g $aro_rg_name
 
 az connectedk8s delete --name $azure_arc_aro -g $aro_rg_name -y
 

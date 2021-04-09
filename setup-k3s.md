@@ -584,7 +584,6 @@ az monitor log-analytics workspace show -n $analytics_workspace_name -g $k3s_rg_
 export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $k3s_rg_name --query id)
 echo "analytics_workspace_id:" $analytics_workspace_id
 
-curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
 
 # https://github.com/Azure/azure-cli/issues/8401 --query id ==> -o tsv is NECESSARY
 export azureArc_K3S_ClusterResourceId=$(az connectedk8s show -g $k3s_rg_name --name $azure_arc_k3s --query id -o tsv)
@@ -596,8 +595,16 @@ export kubeContext="k3s-default" #"<kubeContext name of your k8s cluster>"
 
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 helm ls --kube-context k3s-default -v=10
+
+# curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
 # if the above test fails the enable-monitoring.sh script will fails as well ...
-bash enable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
+# bash enable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
+
+az k8s-extension create --name azuremonitor-containers --cluster-name $azure_arc_k3s --resource-group $k3s_rg_name --cluster-type connectedClusters --extension-type Microsoft.AzureMonitor.Containers --configuration-settings logAnalyticsWorkspaceResourceID=$analytics_workspace_id omsagent.resources.daemonset.limits.cpu=150m omsagent.resources.daemonset.limits.memory=600Mi omsagent.resources.deployment.limits.cpu=1 omsagent.resources.deployment.limits.memory=750Mi
+
+az k8s-extension list --cluster-name $azure_arc_k3s --resource-group $k3s_rg_name --cluster-type connectedClusters 
+azmon_extension_state=$(az k8s-extension show --name azuremonitor-containers --cluster-name $azure_arc_k3s --resource-group $k3s_rg_name --cluster-type connectedClusters --query 'installState')
+echo "Azure Monitor extension state: " $azmon_extension_state
 
 ```
 Verify :
@@ -781,9 +788,10 @@ See [Azure Arc doc](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/
 ```sh
 helm uninstall azure-policy-addon
 
-curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
-bash disable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --kube-context $kubeContext
+# curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
+# bash disable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --kube-context $kubeContext
 # az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $k3s_rg_name
+az k8s-extension delete --name azuremonitor-containers --cluster-type connectedClusters --cluster-name $azure_arc_k3s  -g $k3s_rg_name
 
 az k8s-configuration delete --name "$arc_config_name_k3s-azure-voting-app" --cluster-name $azure_arc_k3s --cluster-type connectedClusters -g $k3s_rg_name -y
 az k8s-configuration delete --name $arc_config_name_k3s --cluster-name $azure_arc_k3s --cluster-type connectedClusters -g $k3s_rg_name -y
@@ -806,13 +814,3 @@ az network public-ip delete --name $k3s_lb_pub_ip -g $k3s_rg_name
 
 az network vnet subnet update --name $k3s_subnet_name --vnet-name $k3s_vnet_name --network-security-group "" -g $k3s_rg_name
 ```
-
-# K3S Fun with Rasberry Pi
-
-See:
-- [Setup K3S on a Raspberry-Pi in 15 minutes](https://medium.com/@alexellisuk/walk-through-install-kubernetes-to-your-raspberry-pi-in-15-minutes-84a8492dc95a)
-- [https://github.com/Sheldonwl/rpi-travel-case](https://github.com/Sheldonwl/rpi-travel-case)
-- [https://doingdata.cloud/2020/05/24/how-to-k3s-on-raspberry-pi](https://doingdata.cloud/2020/05/24/how-to-k3s-on-raspberry-pi)
-- [https://opensource.com/article/20/3/kubernetes-raspberry-pi-k3s](https://opensource.com/article/20/3/kubernetes-raspberry-pi-k3s)
-- [https://blog.alexellis.io/raspberry-pi-homelab-with-k3sup](https://blog.alexellis.io/raspberry-pi-homelab-with-k3sup)
-- []()
