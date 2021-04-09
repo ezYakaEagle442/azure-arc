@@ -152,9 +152,8 @@ echo "AKS RG name:" $aks_rg_name
 cluster_rg_name="rg-managed-cluster-${appName}-${location}" 
 echo "AKS Cluster RG name:" $cluster_rg_name 
 
-# target : version 1.17.4
 # az aks get-versions --location $location --query '(orchestrators[?isPreview==null].orchestratorVersion)[-2]' -o tsv
-aks_version=$(az aks get-versions -l $location --query 'orchestrators[-4].orchestratorVersion' -o tsv) 
+aks_version=$(az aks get-versions -l $location --query 'orchestrators[-1].orchestratorVersion' -o tsv) 
 echo "AKS version is :" $aks_version 
 
 aks_cluster_name="aks-${appName}-${target_namespace}-101" #aks-<App Name>-<Environment>-<###>
