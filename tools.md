@@ -392,13 +392,14 @@ az login
 ```
 
 ## Install the AZ ARO extension
+AZ ARO is now included in the az core CLI
 see :
 - [https://docs.microsoft.com/en-us/azure/openshift/tutorial-create-cluster#install-the-az-aro-extension](https://docs.microsoft.com/en-us/azure/openshift/tutorial-create-cluster#install-the-az-aro-extension)
 - [source code](https://github.com/Azure/azure-cli/tree/dev/src/azure-cli/azure/cli/command_modules/aro)
 ```sh
-az extension add -n aro --index https://az.aroapp.io/stable
-az extension update -n aro --index https://az.aroapp.io/stable
-az provider register -n Microsoft.RedHatOpenShift --wait
+# az extension add -n aro --index https://az.aroapp.io/stable
+# az extension update -n aro --index https://az.aroapp.io/stable
+# az provider register -n Microsoft.RedHatOpenShift --wait
 az -v
 
 ```
@@ -789,6 +790,19 @@ alias kdp="k describe pod"
 alias kdd="k describe deployment"
 alias kds="k describe service"
 
+```
+
+## Containerd Tools
+
+See :
+- [https://docs.microsoft.com/en-us/azure/aks/cluster-configuration#containerd-limitationsdifferences](https://docs.microsoft.com/en-us/azure/aks/cluster-configuration#containerd-limitationsdifferences)
+- [https://github.com/kubernetes-sigs/cri-tools](https://github.com/kubernetes-sigs/cri-tools#install-crictl)
+
+```sh
+CRICTL_VERSION="v1.20.0"
+wget https://github.com/kubernetes-sigs/cri-tools/releases/download/$CRICTL_VERSION/crictl-$CRICTL_VERSION-linux-amd64.tar.gz
+sudo tar zxvf crictl-$CRICTL_VERSION-linux-amd64.tar.gz -C /usr/local/bin
+rm -f crictl-$CRICTL_VERSION-linux-amd64.tar.gz
 ```
 
 Optionnaly : If you want to run PowerShell
