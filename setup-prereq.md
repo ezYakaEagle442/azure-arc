@@ -23,11 +23,13 @@ az provider register --namespace 'Microsoft.PolicyInsights'
 ```sh
 az extension list-available
 az extension add -n connectedk8s --yes
-az extension add -n k8sconfiguration --yes
+az extension add -n k8s-configuration --yes
+az extension add --name connectedmachine --yes
 az extension list -o table
 
 az extension update --name connectedk8s
-az extension update --name k8sconfiguration
+az extension update --name connectedmachine
+az extension update --name k8s-configuration
 
 ```
 

@@ -25,9 +25,9 @@ echo "AKS VNet Id :" $aks_vnet_id
 aks_subnet_id=$(az network vnet subnet show --resource-group $aks_rg_name --vnet-name $aks_vnet_name --name $aks_subnet_name --query id -o tsv)
 echo "AKS Subnet Id :" $aks_subnet_id	
 
-az role assignment list --assignee $sp_id 
-az role assignment create --assignee $sp_id --scope $aks_vnet_id --role Contributor
-# az role assignment create --assignee $sp_id --scope $aks_subnet_id --role "Network contributor"
+az role assignment list --assignee $aks_sp_id 
+az role assignment create --assignee $aks_sp_id --scope $aks_vnet_id --role Contributor
+# az role assignment create --assignee $aks_sp_id --scope $aks_subnet_id --role "Network contributor"
 
 
 ```
