@@ -172,11 +172,15 @@ choco upgrade terraform --Yes --confirm --accept-license
 ## How to install Terraform on Ubuntu or WSL
 [see this blog](https://techcommunity.microsoft.com/t5/azure-developer-community-blog/configuring-terraform-on-windows-10-linux-sub-system/ba-p/393845)
 ```sh
+TF_VER=0.14.10
+echo "Installing TF version " $TF_VER
 sudo apt-get install unzip
-wget https://releases.hashicorp.com/terraform/0.14.3/terraform_0.14.3_linux_amd64.zip -O terraform.zip;
+wget https://releases.hashicorp.com/terraform/$TF_VER/terraform_${TF_VER}_linux_amd64.zip -O terraform.zip;
 unzip terraform.zip
 sudo mv terraform /usr/local/bin
 rm terraform.zip
+terraform version
+
 # Naming conventions
 See also [See also https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/considerations/naming-and-tagging](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/considerations/naming-and-tagging)
 
@@ -486,11 +490,12 @@ rm google-cloud-sdk-298.0.0-linux-x86_64.tar.gz
 . .bashrc
 
 # gcloud components install kubectl
-gcloud components update
+sudo gcloud components update -Y
 
 sudo chown usrXXX:grpXXX /home/$USER/.config/gcloud/config_sentinel
 sudo chown usrXXX:grpXXX /home/$USER/.config/gcloud/gce
 gcloud help
+gcloud version
 
 ```
 ## Install GCloud on windows
