@@ -122,10 +122,13 @@ cd azure_arc_data_jumpstart/gke/postgres_hs/terraform/
 
 gcloud container get-server-config --zone $GKE_ZONE
 
-arc_data_gke_rg_name="rg-${appName}-data-gke-pgsql-${location}" 
-az group create --name $arc_data_gke_rg_name --location $location
+# RG will be created by TF
+# arc_data_gke_rg_name="rg-${appName}-data-gke-pgsql-${location}" 
+# az group create --name $arc_data_gke_rg_name --location $location
 
 ```
+
+## Deploy IaC with TF
 
 Edit scripts/vars.sh and update each of the variables with the appropriate values.
 see azure_arc_data_jumpstart/gke/postgres_hs/terraform/example/TF_VAR_example.sh
@@ -134,23 +137,23 @@ see azure_arc_data_jumpstart/gke/postgres_hs/terraform/example/TF_VAR_example.sh
 ```sh
 cat <<EOF >> scripts/vars.sh
 export TF_VAR_gcp_project_id={gcp project id}
-export TF_VAR_gcp_credentials_filename='~/gke-arc-data-sa-key.json'
-export TF_VAR_gcp_region='europe-west4'
-export TF_VAR_ARC_DC_REGION='westeurope'
+export TF_VAR_gcp_credentials_filename=~/gke-arc-data-sa-key.json
+export TF_VAR_gcp_region=europe-west4
+export TF_VAR_ARC_DC_REGION=westeurope
 export TF_VAR_gcp_zone=${GKE_ZONE}
-export TF_VAR_gke_cluster_name='arc-data-gke'
+export TF_VAR_gke_cluster_name=arc-data-gke
 export TF_VAR_gke_cluster_node_count=1
 export TF_VAR_admin_username={admin username}
 export TF_VAR_admin_password={admin password}
-export TF_VAR_windows_username='azarc-admin'
+export TF_VAR_windows_username=azarc-admin
 export TF_VAR_windows_password={admin password}
 export TF_VAR_SPN_CLIENT_ID={client id}
 export TF_VAR_SPN_CLIENT_SECRET={client secret}
 export TF_VAR_SPN_TENANT_ID={tenant id}
-export TF_VAR_SPN_AUTHORITY='https://login.microsoftonline.com'
-export TF_VAR_AZDATA_USERNAME='arcdemo'
+export TF_VAR_SPN_AUTHORITY=https://login.microsoftonline.com
+export TF_VAR_AZDATA_USERNAME=arcdemo
 export TF_VAR_AZDATA_PASSWORD={admin password}
-export TF_VAR_ARC_DC_NAME='gkearcdatactrl'
+export TF_VAR_ARC_DC_NAME=gkearcdatactrl
 export TF_VAR_ARC_DC_SUBSCRIPTION={subscription id}
 export TF_VAR_ARC_DC_RG={resource group}
 EOF
@@ -204,11 +207,24 @@ terraform init
 # terraform plan
 terraform apply --auto-approve
 
+gcp_vm_ip=$(terraform output |  tr -d '"'  |  tr -d 'ip =') 
+rdp azarc-admin@$gcp_vm_ip
 
 ```
 
+### Toubleshoot
 
-```
+If you see the error below : 
+Error: Error creating instance: googleapi: Error 400: Windows VM instances are not included with the free trial. To use them, first enable billing on your account. You'll still be able to apply your free trial credits to eligible products and services., windowsVmNotAllowedInFreeTrialProject
+
+  on client_vm.tf line 23, in resource "google_compute_instance" "default":
+  23: resource "google_compute_instance" "default" {
+
+
+==> Check the billing account is correctly linked to the GCP project, then enable the GCP full access clicking on the top of the google cloud console where there is a link appearing to enable usage of free credit then rerun : 
+
+terraform apply --auto-approve
+
 
 
 
@@ -225,6 +241,7 @@ Check first your KubeConfig
 k config get-contexts
 k config view --minify
 
+# AKS
 C:\tmp\DC_Cleanup.ps1
 C:\tmp\Postgres_Cleanup.ps1
 
@@ -233,11 +250,21 @@ az resource delete --name arcdatactrl --resource-type Microsoft.AzureData/dataCo
 
 az deployment group delete --name azarc-data-aks-pgsql -g rg-azarc-data-aks-pgsql-westeurope
 
-az resource delete --ids /subscriptions/7b5f97dc-3c4d-424d-8288-bdde3891f242/resourceGroups/rg-azarc-data-aks-pgsql-westeurope/providers/Microsoft.AzureArcData/dataControllers/arcdatactrl --resource-type Microsoft.AzureData/dataControllers -g rg-azarc-data-aks-pgsql-westeurope
+az resource delete --ids /subscriptions/$subId/resourceGroups/rg-azarc-data-aks-pgsql-westeurope/providers/Microsoft.AzureArcData/dataControllers/arcdatactrl --resource-type Microsoft.AzureData/dataControllers -g rg-azarc-data-aks-pgsql-westeurope
 
 
 kubectl config delete-context XXX-ctx
 
 az group delete -n rg-azarc-data-aks-pgsql-westeurope
+
+# GKE
+C:\tmp\Postgres_HS_Cleanup.ps1
+
+azdata arc dc delete -ns arcdatactrl -n gkearcdatactrl
+az resource delete --name gkearcdatactrl --resource-type Microsoft.AzureData/dataControllers -g $arc_data_gke_rg_name
+
+az resource delete --ids /subscriptions/$subId/resourceGroups/$arc_data_gke_rg_name/providers/Microsoft.AzureArcData/dataControllers/gkearcdatactrl --resource-type Microsoft.AzureData/dataControllers -g $arc_data_gke_rg_name
+
+terraform destroy --auto-approve
 
 ```
