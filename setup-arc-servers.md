@@ -56,8 +56,10 @@ az provider register --namespace 'Microsoft.GuestConfiguration'
 
 ## Pre-req
 ```sh
+gcloud version
+sudo /home/$USER/google-cloud-sdk/bin/gcloud components update
+
 gcloud auth login $GKE_ACCOUNT
-# sudo /home/$USER/google-cloud-sdk/bin/gcloud components update
 
 gcloud config list
 gcloud config set account $GKE_ACCOUNT
@@ -65,7 +67,7 @@ gcloud config set account $GKE_ACCOUNT
 GCP_PROJECT_ID="$GCP_PROJECT-$(uuidgen | cut -d '-' -f2 | tr '[A-Z]' '[a-z]')"
 gcloud projects create $GCP_PROJECT_ID --name $GCP_PROJECT --verbosity=info
 gcloud projects list 
-gcloud compute instances list --project $GCP_PROJECT
+gcloud compute instances list --project $GCP_PROJECT_ID
 gcloud config set project $GCP_PROJECT_ID
 gcloud config list
 
@@ -138,7 +140,10 @@ ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa -C "youremail@groland.grd"
 
 ```sh
 
+cd azure_arc_servers_jumpstart/gcp/ubuntu/terraform
+
 terraform init
+terraform plan
 terraform apply --auto-approve
 
 # If you get this error :  googleapi: Error 403: Required 'compute.zones.get' permission for 'projects/
