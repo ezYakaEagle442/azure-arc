@@ -243,6 +243,15 @@ GCP_PROJECT="gcp-vm-arc-enabled"
 echo "GCP Project :" $GCP_PROJECT
 ```
 
+# GKE cluster for Arc forData
+```sh
+GKE_DATA_PROJECT="gke-arc-data-enabled"
+echo "GCP Project :" $GKE_DATA_PROJECT
+
+ADM_PWD=CHANGEIT
+
+```
+
 ## Extra variables
 Note: The here under variables are built based on the varibales defined above, you should not need to modify them, just run this snippet
 
