@@ -31,11 +31,13 @@ gcloud config set account $GKE_ACCOUNT
 GKE_PROJECT_ID="$GKE_PROJECT-$(uuidgen | cut -d '-' -f2 | tr '[A-Z]' '[a-z]')"
 gcloud projects create $GKE_PROJECT_ID --name $GKE_PROJECT --verbosity=info
 gcloud projects list 
-gcloud container clusters list --project $GKE_PROJECT
+gcloud container clusters list --project $GKE_PROJECT_ID
 gcloud config set project $GKE_PROJECT_ID
 gcloud config list
 # These flags are available to all commands: --account, --billing-project, --configuration, --flags-file, --flatten, --format, --help, --impersonate-service-account, --log-http, --project, --quiet, --trace-token, --user-output-enabled, --verbosity.
 
+
+gcloud container get-server-config --zone $GKE_ZONE
 export KUBECONFIG=gke-config
 
 # You need to enable GKE API, see at https://console.cloud.google.com/apis/api/container.googleapis.com/overview?project=gke-arc-enabled
@@ -352,11 +354,11 @@ See the [doc](https://docs.microsoft.com/en-us/azure/azure-monitor/insights/cont
 
 ```sh
 az monitor log-analytics workspace list
-az monitor log-analytics workspace create -n $analytics_workspace_name --location $location -g $common_rg_name --verbose
+az monitor log-analytics workspace create -n $analytics_workspace_name --location $location -g $gke_rg_name --verbose
 az monitor log-analytics workspace list
-az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_rg_name --verbose
+az monitor log-analytics workspace show -n $analytics_workspace_name -g $gke_rg_name --verbose
 
-export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $common_rg_name --query id)
+export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $gke_rg_name --query id)
 echo "analytics_workspace_id:" $analytics_workspace_id
 
 # https://github.com/Azure/azure-cli/issues/8401 --query id ==> -o tsv is NECESSARY
@@ -556,7 +558,7 @@ helm uninstall azure-policy-addon
 
 # curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
 # bash disable-monitoring.sh --resource-id $azureArc_gke_ClusterResourceId --kube-context $kubeContext
-# az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $common_rg_name
+# az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $gke_rg_name
 az k8s-extension delete --name azuremonitor-containers --cluster-type connectedClusters --cluster-name $gke_cluster_name  -g $gke_rg_name
 
 az k8s-configuration delete --name "$arc_config_name_gke-azure-voting-app" --cluster-name $azure_arc_gke --cluster-type connectedClusters -g $gke_rg_name -y
