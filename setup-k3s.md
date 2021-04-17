@@ -788,6 +788,8 @@ See [Azure Arc doc](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/
 ```sh
 helm uninstall azure-policy-addon
 
+az connectedk8s delete --name $azure_arc_k3s -g $k3s_rg_name -y # --kube-config $KUBECONFIG --kube-context $kubeContext
+
 # curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
 # bash disable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --kube-context $kubeContext
 # az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $k3s_rg_name

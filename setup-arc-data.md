@@ -175,23 +175,23 @@ export TF_VAR_SPN_TENANT_ID={tenant id}
 export TF_VAR_SPN_AUTHORITY=https://login.microsoftonline.com
 export TF_VAR_AZDATA_USERNAME=arcdemo
 export TF_VAR_AZDATA_PASSWORD={admin password}
-export TF_VAR_ARC_DC_NAME=gkearcdatactrl
+export TF_VAR_ARC_DC_NAME=gkearcdatapgsqlctrl
 export TF_VAR_ARC_DC_SUBSCRIPTION={subscription id}
 export TF_VAR_ARC_DC_RG={resource group}
 EOF
 
 arc_data_gke_rg_name="rg-${appName}-data-gke-pgsql-${location}" 
 
-sed -i "s/{gcp project id}/${GKE_DATA_PROJECT_ID}/g" vars.sh
-sed -i "s/{admin username}/azarc-admin/g" vars.sh
-sed -i "s/{admin password}/${ADM_PWD}/g" vars.sh
-sed -i "s/{subscription id}/${subId}/g" vars.sh
-sed -i "s/{client id}/${arc_data_sp_id}/g" vars.sh
-sed -i "s/{client secret}/${arc_data_sp_password}/g" vars.sh
-sed -i "s/{tenant id}/${tenantId}/g" vars.sh
-sed -i "s/{resource group}/${arc_data_gke_rg_name}/g" vars.sh
+sed -i "s/{gcp project id}/${GKE_DATA_PROJECT_ID}/g" ./scripts/vars.sh
+sed -i "s/{admin username}/azarc-admin/g" ./scripts/vars.sh
+sed -i "s/{admin password}/${ADM_PWD}/g" ./scripts/vars.sh
+sed -i "s/{subscription id}/${subId}/g" ./scripts/vars.sh
+sed -i "s/{client id}/${arc_data_sp_id}/g" ./scripts/vars.sh
+sed -i "s/{client secret}/${arc_data_sp_password}/g" v./scripts/ars.sh
+sed -i "s/{tenant id}/${tenantId}/g" ./scripts/vars.sh
+sed -i "s/{resource group}/${arc_data_gke_rg_name}/g" ./scripts/vars.sh
 
-cat vars.sh
+cat ./scripts/vars.sh
 source ./scripts/vars.sh
 ```
 
@@ -214,48 +214,6 @@ rdp azarc-admin@$gcp_vm_ip
 
 ```
 
-### Toubleshoot
-
-If you see the error below : 
-Error: Error creating instance: googleapi: Error 400: Windows VM instancs are not included with the free trial. To use them, first enable billing on your account. You'll still be able to apply your free trial credits to eligible products and services., windowsVmNotAllowedInFreeTrialProject
-
-  on client_vm.tf line 23, in resource "google_compute_instance" "default":
-  23: resource "google_compute_instance" "default" {
-
-
-==> Check the billing account is correctly linked to the GCP project, then enable the GCP full access clicking on the top of the google cloud console where there is a link appearing to enable usage of free credit then rerun : 
-terraform apply --auto-approve
-
-Note: To connect to the Postgres instance use the AZDATA_USERNAME and AZDATA_PASSWORD values specified in the azuredeploy.parameters.json file. The “sa” login is disabled.
-
-On the windows client VM
-```sh
-azdata login --namespace $env:ARC_DC_NAME
-azdata arc dc status show
-
-kubectl get ns
-kubectl get pods -n gkearcdatactrl
-
-kubectl get events --all-namespaces
-kubectl get rs -n gkearcdatactrl
-kubectl describe rs bootstrapper -n gkearcdatactrl
-
-kubectl get sa -n gkearcdatactrl
-kubectl get sa --all-namespaces
-
-kubectl describe sa default -n gkearcdatactrl
-
-gcloud container clusters describe arc-data-gke --zone europe-west4-a
-
-
-kubectl get secrets --all-namespaces
-
-$env:ARC_DC_NAME
-
-# To check your env variables : 
-
-dir env:
-```
 
 ## Deploy an Azure SQL Managed Instance on GKE using a Terraform plan
 
@@ -272,7 +230,7 @@ see azure_arc_data_jumpstart/gke/mssql_mi/terraform/example/TF_VAR_example.sh
 
 
 ```sh
-
+cd azure_arc_data_jumpstart/gke/mssql_mi/terraform
 cp ~/gke-arc-data-sa-key.json azure_arc_data_jumpstart/gke/mssql_mi/terraform
 
 cat <<EOF >> scripts/vars.sh
@@ -293,24 +251,23 @@ export TF_VAR_SPN_TENANT_ID={tenant id}
 export TF_VAR_SPN_AUTHORITY=https://login.microsoftonline.com
 export TF_VAR_AZDATA_USERNAME=arcdemo
 export TF_VAR_AZDATA_PASSWORD={admin password}
-export TF_VAR_ARC_DC_NAME=gkearcdatasqlctrl
+export TF_VAR_ARC_DC_NAME=gkearcdatasqlmictrl
 export TF_VAR_ARC_DC_SUBSCRIPTION={subscription id}
 export TF_VAR_ARC_DC_RG={resource group}
 EOF
 
 arc_data_gke_rg_name="rg-${appName}-data-gke-sqlmi-${location}" 
 
-sed -i "s/{gcp project id}/${GKE_DATA_PROJECT_ID}/g" vars.sh
-sed -i "s/{admin username}/azarc-admin/g" vars.sh
-sed -i "s/{admin password}/${ADM_PWD}/g" vars.sh
-sed -i "s/{subscription id}/${subId}/g" vars.sh
-sed -i "s/{client id}/${arc_data_sp_id}/g" vars.sh
-sed -i "s/{client secret}/${arc_data_sp_password}/g" vars.sh
-sed -i "s/{tenant id}/${tenantId}/g" vars.sh
-sed -i "s/{resource group}/${arc_data_gke_rg_name}/g" vars.sh
+sed -i "s/{gcp project id}/${GKE_DATA_PROJECT_ID}/g" ./scripts/vars.sh
+sed -i "s/{admin username}/azarc-admin/g" ./scripts/vars.sh
+sed -i "s/{admin password}/${ADM_PWD}/g" ./scripts/vars.sh
+sed -i "s/{subscription id}/${subId}/g" ./scripts/vars.sh
+sed -i "s/{client id}/${arc_data_sp_id}/g" ./scripts/vars.sh
+sed -i "s/{client secret}/${arc_data_sp_password}/g" ./scripts/vars.sh
+sed -i "s/{tenant id}/${tenantId}/g" ./scripts/vars.sh
+sed -i "s/{resource group}/${arc_data_gke_rg_name}/g" ./scripts/vars.sh
 
-
-cat vars.sh
+cat ./scripts/vars.sh
 source ./scripts/vars.sh
 ```
 
@@ -323,7 +280,6 @@ TF does **NOT** support Passphrase
 # https://github.com/hashicorp/terraform/issues/24898
 ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa -C "youremail@groland.grd"
 
-
 cd azure_arc_data_jumpstart/gke/mssql_mi/terraform
 terraform init
 # terraform plan
@@ -332,6 +288,46 @@ terraform apply --auto-approve
 gcp_vm_ip=$(terraform output |  tr -d '"'  |  tr -d 'ip =') 
 rdp azarc-admin@$gcp_vm_ip
 
+```
+
+
+## Toubleshoot
+
+If you see the error below : 
+Error: Error creating instance: googleapi: Error 400: Windows VM instancs are not included with the free trial. To use them, first enable billing on your account. You'll still be able to apply your free trial credits to eligible products and services., windowsVmNotAllowedInFreeTrialProject
+
+  on client_vm.tf line 23, in resource "google_compute_instance" "default":
+  23: resource "google_compute_instance" "default" {
+
+
+==> Check the billing account is correctly linked to the GCP project, then enable the GCP full access clicking on the top of the google cloud console where there is a link appearing to enable usage of free credit then rerun : 
+terraform apply --auto-approve
+
+Note: To connect to the Postgres instance use the AZDATA_USERNAME and AZDATA_PASSWORD values specified in the azuredeploy.parameters.json file. The “sa” login is disabled.
+
+On the windows client VM
+```sh
+$env:ARC_DC_NAME
+azdata login --namespace $env:ARC_DC_NAME
+azdata arc dc status show
+
+kubectl get ns
+kubectl get pods -n $env:ARC_DC_NAME
+
+kubectl get events --all-namespaces
+kubectl get rs -n gkearcdatactrl
+kubectl describe rs bootstrapper -n $env:ARC_DC_NAME
+
+kubectl get sa -n $env:ARC_DC_NAME
+kubectl get sa --all-namespaces
+
+kubectl describe sa default -n $env:ARC_DC_NAME
+gcloud container clusters describe arc-data-gke --zone europe-west4-a
+kubectl get secrets --all-namespaces
+
+# To check your env variables : 
+
+dir env:
 ```
 
 # Clean-Up
