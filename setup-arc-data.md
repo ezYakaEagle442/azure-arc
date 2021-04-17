@@ -2,10 +2,12 @@ See :
 - [https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/aks/aks_postgresql_hyperscale_arm_template](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/aks/aks_postgresql_hyperscale_arm_template/)
 - [https://docs.microsoft.com/en-us/azure/azure-arc/data/overview](https://docs.microsoft.com/en-us/azure/azure-arc/data/overview)
 
-# Pre-req
+# Azure Pre-req
 
 Install [client tools](https://docs.microsoft.com/en-us/azure/azure-arc/data/install-client-tools)
 
+
+Create Service Principal
 ```sh
 arc_data_sp_password=$(az ad sp create-for-rbac --name $appName-data --role contributor --query password -o tsv)
 echo $arc_data_sp_password > arc_data_sp_password.txt
@@ -72,12 +74,9 @@ az deployment group create --name azarc-data-aks-pgsql \
 ```
 
 
-# Deploy an Azure PostgreSQL Hyperscale Deployment on GKE using a Terraform plan
+# Deployment on GKE
 
-[https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/gke/gke_postgres_hs_terraform/#deploy-an-azure-postgresql-hyperscale-deployment-on-gke-using-a-terraform-plan](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/gke/gke_postgres_hs_terraform/#deploy-an-azure-postgresql-hyperscale-deployment-on-gke-using-a-terraform-plan)
-
-
-## Pre-req
+## GCP Pre-req
 ```sh
 gcloud version
 sudo /home/$USER/google-cloud-sdk/bin/gcloud components update
@@ -91,14 +90,12 @@ gcloud projects create $GKE_DATA_PROJECT_ID --name $GKE_DATA_PROJECT --verbosity
 gcloud projects list 
 gcloud config set project $GKE_DATA_PROJECT_ID
 
-# You need to enable GKE API, see at https://console.cloud.google.com/apis/api/container.googleapis.com/overview?project=gke-arc-enabled
+# You need to enable GKE API
 echo "You need to enable GKE API, see at https://console.cloud.google.com/apis/api/container.googleapis.com/overview?project=$GKE_DATA_PROJECT_ID"
-# https://cloud.google.com/kubernetes-engine/docs/how-to/creating-a-cluster
-# https://cloud.google.com/compute/docs/machine-types ==> n1-standard-1 is too small
-
 ```
 
-Next, set up a service account key, which Terraform will use to create and manage resources in your GCP project. Go to the create service account key page. Select “New Service Account” from the dropdown, give it a name, select Project then Owner as the role, JSON as the key type, and click Create. This downloads a JSON file with all the credentials that will be needed for Terraform to manage the resources. Copy the downloaded JSON file to the azure_arc_servers_jumpstart/gcp/ubuntu/terraform directory.
+Next, set up a service account key, which Terraform will use to create and manage resources in your GCP project.
+Copy the credentials JSON file to the azure_arc_servers_jumpstart/gcp/ubuntu/terraform directory.
 
 [https://cloud.google.com/iam/docs/creating-managing-service-account-keys](https://cloud.google.com/iam/docs/creating-managing-service-account-keys)
 
@@ -113,31 +110,56 @@ gcloud iam service-accounts keys list --iam-account sa-azure-arc-data@$GKE_DATA_
 gcloud container clusters list --project $GKE_DATA_PROJECT_ID
 gcloud config set project $GKE_DATA_PROJECT
 gcloud config list
-# These flags are available to all commands: --account, --billing-project, --configuration, --flags-file, --flatten, --format, --help, --impersonate-service-account, --log-http, --project, --quiet, --trace-token, --user-output-enabled, --verbosity.
-
 gcloud container clusters list --project $GKE_DATA_PROJECT_ID
 
 
-cd azure_arc_data_jumpstart/gke/postgres_hs/terraform/
-
+cd azure_arc_data_jumpstart/gke/postgres_hs/terraform
 gcloud container get-server-config --zone $GKE_ZONE
 
-# RG will be created by TF
-# arc_data_gke_rg_name="rg-${appName}-data-gke-pgsql-${location}" 
-# az group create --name $arc_data_gke_rg_name --location $location
 
+# If you get this error :  googleapi: Error 403: Required 'compute.zones.get' permission for 'projects/
+# https://github.com/terraform-google-modules/terraform-google-kubernetes-engine/issues/459
+# https://stackoverflow.com/questions/48232189/google-compute-engine-required-compute-zones-get-permission-error
+# requires roles: roles/compute.instanceAdmin , roles/editor , roles/iam.serviceAccountUser
+
+# IMPRTANT : SA must be owner
+gcloud projects add-iam-policy-binding $GKE_DATA_PROJECT_ID \
+    --member="serviceAccount:sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/owner"
+
+gcloud projects add-iam-policy-binding $GKE_DATA_PROJECT_ID \
+    --member="serviceAccount:sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/compute.instanceAdmin"
+
+gcloud projects add-iam-policy-binding $GKE_DATA_PROJECT_ID \
+    --member="serviceAccount:sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/editor"
+
+gcloud projects add-iam-policy-binding $GKE_DATA_PROJECT_ID \
+    --member="serviceAccount:sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/iam.serviceAccountUser"
+    
 ```
 
-## Deploy IaC with TF
+## Deploy an Azure PostgreSQL Hyperscale Deployment on GKE using a Terraform plan
 
+see [https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/gke/gke_postgres_hs_terraform/#deploy-an-azure-postgresql-hyperscale-deployment-on-gke-using-a-terraform-plan](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/gke/gke_postgres_hs_terraform/#deploy-an-azure-postgresql-hyperscale-deployment-on-gke-using-a-terraform-plan)
+
+
+Ensure to have the GCP project, SA et keys created ax described in the previous [pre-req section](#GCP-Pre-req)
+
+Deploy IaC with TF
 Edit scripts/vars.sh and update each of the variables with the appropriate values.
 see azure_arc_data_jumpstart/gke/postgres_hs/terraform/example/TF_VAR_example.sh
 
 
 ```sh
+
+cp ~/gke-arc-data-sa-key.json azure_arc_data_jumpstart/gke/postgres_hs/terraform
+
 cat <<EOF >> scripts/vars.sh
 export TF_VAR_gcp_project_id={gcp project id}
-export TF_VAR_gcp_credentials_filename=~/gke-arc-data-sa-key.json
+export TF_VAR_gcp_credentials_filename=gke-arc-data-sa-key.json
 export TF_VAR_gcp_region=europe-west4
 export TF_VAR_ARC_DC_REGION=westeurope
 export TF_VAR_gcp_zone=${GKE_ZONE}
@@ -157,6 +179,126 @@ export TF_VAR_ARC_DC_NAME=gkearcdatactrl
 export TF_VAR_ARC_DC_SUBSCRIPTION={subscription id}
 export TF_VAR_ARC_DC_RG={resource group}
 EOF
+
+arc_data_gke_rg_name="rg-${appName}-data-gke-pgsql-${location}" 
+
+sed -i "s/{gcp project id}/${GKE_DATA_PROJECT_ID}/g" vars.sh
+sed -i "s/{admin username}/azarc-admin/g" vars.sh
+sed -i "s/{admin password}/${ADM_PWD}/g" vars.sh
+sed -i "s/{subscription id}/${subId}/g" vars.sh
+sed -i "s/{client id}/${arc_data_sp_id}/g" vars.sh
+sed -i "s/{client secret}/${arc_data_sp_password}/g" vars.sh
+sed -i "s/{tenant id}/${tenantId}/g" vars.sh
+sed -i "s/{resource group}/${arc_data_gke_rg_name}/g" vars.sh
+
+cat vars.sh
+source ./scripts/vars.sh
+```
+
+make sure your SSH keys are available in ~/.ssh and named id_rsa.pub and id_rsa. If you followed the ssh-keygen guide above to create your key then this should already be setup correctly. If not, you may need to modify main.tf to use a key with a different path.
+TF does **NOT** support Passphrase
+```sh
+# Note: if your SSH Key is protected by a Passphrase, you will get an error mesage :
+# Error: Failed to read ssh private key: password protected keys are not supported. Please decrypt the key prior to use.
+# https://github.com/hashicorp/terraform/issues/13734
+# https://github.com/hashicorp/terraform/issues/24898
+ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa -C "youremail@groland.grd"
+
+cd azure_arc_data_jumpstart/gke/postgres_hs/terraform
+terraform init
+# terraform plan
+terraform apply --auto-approve
+
+gcp_vm_ip=$(terraform output |  tr -d '"'  |  tr -d 'ip =') 
+rdp azarc-admin@$gcp_vm_ip
+
+```
+
+### Toubleshoot
+
+If you see the error below : 
+Error: Error creating instance: googleapi: Error 400: Windows VM instancs are not included with the free trial. To use them, first enable billing on your account. You'll still be able to apply your free trial credits to eligible products and services., windowsVmNotAllowedInFreeTrialProject
+
+  on client_vm.tf line 23, in resource "google_compute_instance" "default":
+  23: resource "google_compute_instance" "default" {
+
+
+==> Check the billing account is correctly linked to the GCP project, then enable the GCP full access clicking on the top of the google cloud console where there is a link appearing to enable usage of free credit then rerun : 
+terraform apply --auto-approve
+
+Note: To connect to the Postgres instance use the AZDATA_USERNAME and AZDATA_PASSWORD values specified in the azuredeploy.parameters.json file. The “sa” login is disabled.
+
+On the windows client VM
+```sh
+azdata login --namespace $env:ARC_DC_NAME
+azdata arc dc status show
+
+kubectl get ns
+kubectl get pods -n gkearcdatactrl
+
+kubectl get events --all-namespaces
+kubectl get rs -n gkearcdatactrl
+kubectl describe rs bootstrapper -n gkearcdatactrl
+
+kubectl get sa -n gkearcdatactrl
+kubectl get sa --all-namespaces
+
+kubectl describe sa default -n gkearcdatactrl
+
+gcloud container clusters describe arc-data-gke --zone europe-west4-a
+
+
+kubectl get secrets --all-namespaces
+
+$env:ARC_DC_NAME
+
+# To check your env variables : 
+
+dir env:
+```
+
+## Deploy an Azure SQL Managed Instance on GKE using a Terraform plan
+
+See [https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/gke/gke_mssql_mi_terraform/#deploy-an-azure-sql-managed-instance-on-gke-using-a-terraform-plan](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/gke/gke_mssql_mi_terraform/#deploy-an-azure-sql-managed-instance-on-gke-using-a-terraform-plan)
+
+## Pre-req
+
+Ensure to have the GCP project, SA et keys created ax described in the previous [pre-req section](#GCP-Pre-req)
+
+## Deploy IaC with TF
+
+Edit scripts/vars.sh and update each of the variables with the appropriate values.
+see azure_arc_data_jumpstart/gke/mssql_mi/terraform/example/TF_VAR_example.sh
+
+
+```sh
+
+cp ~/gke-arc-data-sa-key.json azure_arc_data_jumpstart/gke/mssql_mi/terraform
+
+cat <<EOF >> scripts/vars.sh
+export TF_VAR_gcp_project_id={gcp project id}
+export TF_VAR_gcp_credentials_filename=gke-arc-data-sa-key.json
+export TF_VAR_gcp_region=europe-west4
+export TF_VAR_gcp_zone=${GKE_ZONE}
+export TF_VAR_ARC_DC_REGION=westeurope
+export TF_VAR_gke_cluster_name=arc-sql-data-gke
+export TF_VAR_gke_cluster_node_count=1
+export TF_VAR_admin_username={admin username}
+export TF_VAR_admin_password={admin password}
+export TF_VAR_windows_username=azarc-admin
+export TF_VAR_windows_password={admin password}
+export TF_VAR_SPN_CLIENT_ID={client id}
+export TF_VAR_SPN_CLIENT_SECRET={client secret}
+export TF_VAR_SPN_TENANT_ID={tenant id}
+export TF_VAR_SPN_AUTHORITY=https://login.microsoftonline.com
+export TF_VAR_AZDATA_USERNAME=arcdemo
+export TF_VAR_AZDATA_PASSWORD={admin password}
+export TF_VAR_ARC_DC_NAME=gkearcdatasqlctrl
+export TF_VAR_ARC_DC_SUBSCRIPTION={subscription id}
+export TF_VAR_ARC_DC_RG={resource group}
+EOF
+
+arc_data_gke_rg_name="rg-${appName}-data-gke-sqlmi-${location}" 
 
 sed -i "s/{gcp project id}/${GKE_DATA_PROJECT_ID}/g" vars.sh
 sed -i "s/{admin username}/azarc-admin/g" vars.sh
@@ -180,29 +322,9 @@ TF does **NOT** support Passphrase
 # https://github.com/hashicorp/terraform/issues/13734
 # https://github.com/hashicorp/terraform/issues/24898
 ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa -C "youremail@groland.grd"
-```
 
 
-```sh
-
-# If you get this error :  googleapi: Error 403: Required 'compute.zones.get' permission for 'projects/
-# https://github.com/terraform-google-modules/terraform-google-kubernetes-engine/issues/459
-# https://stackoverflow.com/questions/48232189/google-compute-engine-required-compute-zones-get-permission-error
-# requires roles: roles/compute.instanceAdmin , roles/editor , roles/iam.serviceAccountUser
-gcloud projects add-iam-policy-binding $GKE_DATA_PROJECT_ID \
-    --member="serviceAccount:sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/compute.instanceAdmin"
-
-gcloud projects add-iam-policy-binding $GKE_DATA_PROJECT_ID \
-    --member="serviceAccount:sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/editor"
-
-gcloud projects add-iam-policy-binding $GKE_DATA_PROJECT_ID \
-    --member="serviceAccount:sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/iam.serviceAccountUser"
-
-cd azure_arc_data_jumpstart/gke/postgres_hs/terraform
-
+cd azure_arc_data_jumpstart/gke/mssql_mi/terraform
 terraform init
 # terraform plan
 terraform apply --auto-approve
@@ -212,32 +334,16 @@ rdp azarc-admin@$gcp_vm_ip
 
 ```
 
-### Toubleshoot
-
-If you see the error below : 
-Error: Error creating instance: googleapi: Error 400: Windows VM instances are not included with the free trial. To use them, first enable billing on your account. You'll still be able to apply your free trial credits to eligible products and services., windowsVmNotAllowedInFreeTrialProject
-
-  on client_vm.tf line 23, in resource "google_compute_instance" "default":
-  23: resource "google_compute_instance" "default" {
-
-
-==> Check the billing account is correctly linked to the GCP project, then enable the GCP full access clicking on the top of the google cloud console where there is a link appearing to enable usage of free credit then rerun : 
-
-terraform apply --auto-approve
-
-
-
-
 # Clean-Up
 [https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/aks/aks_dc_vanilla_arm_template/#cleanup](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/aks/aks_dc_vanilla_arm_template/#cleanup)
 
 **IMPORTANT**
 To delete the Azure Arc Data Controller and all of it’s Kubernetes resources, run the DC_Cleanup.ps1 PowerShell script located in C:\tmp on the Windows Client VM. At the end of it’s run, the script will close all PowerShell sessions. The Cleanup script run time is approximately 5min long.
 
-
-## Workaround
-Check first your KubeConfig
 ```sh
+## Workaround
+# Check first your KubeConfig
+
 k config get-contexts
 k config view --minify
 
@@ -265,6 +371,7 @@ az resource delete --name gkearcdatactrl --resource-type Microsoft.AzureData/dat
 
 az resource delete --ids /subscriptions/$subId/resourceGroups/$arc_data_gke_rg_name/providers/Microsoft.AzureArcData/dataControllers/gkearcdatactrl --resource-type Microsoft.AzureData/dataControllers -g $arc_data_gke_rg_name
 
+# TF
 terraform destroy --auto-approve
 
 ```

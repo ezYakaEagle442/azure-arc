@@ -105,12 +105,15 @@ TF_VAR_gcp_credentials_filename=GCP credentials json filename
 
 
 ```sh
+
+cp ~/gcp-sa-key.json gcp-sa-key.json
+
 sed -i "s/{subscription id}/${subId}/g" vars.sh
 sed -i "s/{client id}/${arc_server_sp_id}/g" vars.sh
 sed -i "s/{client secret}/${arc_server_sp_password}/g" vars.sh
 sed -i "s/{tenant id}/${tenantId}/g" vars.sh
 sed -i "s/{gcp project id}/${GCP_PROJECT_ID}/g" vars.sh
-sed -i "s/{gcp credentials path}/~\/gcp-sa-key.json/g" vars.sh
+sed -i "s/{gcp credentials path}/gcp-sa-key.json/g" vars.sh
 
 
 cat <<EOF >> vars.sh
