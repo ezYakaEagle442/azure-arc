@@ -104,9 +104,6 @@ To learn more about UDR, see [https://docs.microsoft.com/en-us/azure/virtual-net
 
 ```sh
 
-az feature register --namespace Microsoft.ContainerService --name AutoUpgradePreview 
-az provider register -n Microsoft.ContainerService
-
 az aks create --name $aks_cluster_name \
     --resource-group $aks_rg_name \
     --node-resource-group $cluster_rg_name \
@@ -127,8 +124,6 @@ az aks create --name $aks_cluster_name \
     --client-secret $aks_sp_password \
     --attach-acr $acr_registry_name \
     --ssh-key-value ~/.ssh/${ssh_key}.pub \
-    --auto-upgrade-channel node-image \
-    --enable-addons open-service-mesh \
     --verbose
 
 aks_client_id=$(az aks show --resource-group $aks_rg_name --name $aks_cluster_name --query "servicePrincipalProfile.clientId" --output tsv)
