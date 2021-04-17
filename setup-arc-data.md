@@ -354,9 +354,7 @@ az deployment group delete --name azarc-data-aks-pgsql -g rg-azarc-data-aks-pgsq
 
 az resource delete --ids /subscriptions/$subId/resourceGroups/rg-azarc-data-aks-pgsql-westeurope/providers/Microsoft.AzureArcData/dataControllers/arcdatactrl --resource-type Microsoft.AzureData/dataControllers -g rg-azarc-data-aks-pgsql-westeurope
 
-
 kubectl config delete-context XXX-ctx
-
 az group delete -n rg-azarc-data-aks-pgsql-westeurope
 
 # GKE
