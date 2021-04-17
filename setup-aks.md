@@ -666,6 +666,9 @@ export kubeContext=$aks_cluster_name
 
 helm uninstall azure-policy-addon
 
+az connectedk8s delete --name $azure_arc_aks -g $aks_rg_name -y # --kube-config $KUBECONFIG --kube-context $kubeContext
+
+
 # az aks disable-addons -a monitoring -n $aks_cluster_name -g $aks_rg_name
 
 # curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
