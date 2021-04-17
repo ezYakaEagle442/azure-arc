@@ -9,7 +9,7 @@ az provider register --namespace Microsoft.Kubernetes
 az provider show -n Microsoft.Kubernetes --query  "resourceTypes[?resourceType == 'connectedClusters']".locations 
 
 # az account list-locations : francecentral | northeurope | westeurope | eastus2
-location=westeurope 
+location=francecentral
 echo "location is : " $location 
 
 appName="azarc" 
