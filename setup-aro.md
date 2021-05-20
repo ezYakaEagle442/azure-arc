@@ -488,7 +488,7 @@ az monitor log-analytics workspace create -n $analytics_workspace_name --locatio
 az monitor log-analytics workspace list
 az monitor log-analytics workspace show -n $analytics_workspace_name -g $aro_rg_name --verbose
 
-export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $aro_rg_name --query id)
+export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $aro_rg_name -o tsv --query id)
 echo "analytics_workspace_id:" $analytics_workspace_id
 
 # https://github.com/Azure/azure-cli/issues/8401 --query id ==> -o tsv is NECESSARY
