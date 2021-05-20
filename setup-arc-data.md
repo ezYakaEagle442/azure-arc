@@ -35,7 +35,7 @@ See [https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/aks/aks_dc_
 
 ```sh
 cd /azure_arc/azure_arc_data_jumpstart/aks/arm_template/postgres_hs
-az aks get-versions -l $location
+az aks get-versions -o table -l $location
 
 arc_data_aks_rg_name="rg-${appName}-data-aks-pgsql-${location}" 
 
@@ -60,7 +60,7 @@ See [https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_data/aks/aks_pos
 
 ```sh
 cd /azure_arc/azure_arc_data_jumpstart/aks/arm_template/postgres_hs
-az aks get-versions -l $location
+az aks get-versions -o table  -l $location
 
 arc_data_aks_rg_name="rg-${appName}-data-aks-pgsql-${location}" 
 
@@ -71,6 +71,16 @@ az deployment group create --name azarc-data-aks-pgsql \
 --name ${appName}-data-aks-pgsql \
 --template-uri https://raw.githubusercontent.com/microsoft/azure_arc/main/azure_arc_data_jumpstart/aks/arm_template/postgres_hs/azuredeploy.json \
 --parameters azure_arc_data_jumpstart/aks/arm_template/postgres_hs/azuredeploy.parameters.json
+
+
+azdata arc dc export --path C:\Tmp\arc_data_ctr_aks_pgsql_logs.json --type logs --force
+azdata arc dc export --path C:\Tmp\arc_data_ctr_aks_pgsql_metrics.json --type metrics --force
+azdata arc dc export --path C:\Tmp\arc_data_ctr_aks_pgsql_usage.json --type usage --force
+
+azdata arc dc upload --path C:\Tmp\arc_data_ctr_aks_pgsql_logs.json
+azdata arc dc upload --path C:\Tmp\arc_data_ctr_aks_pgsql_metrics.json
+azdata arc dc upload --path C:\Tmp\arc_data_ctr_aks_pgsql_usage.json
+
 ```
 
 
