@@ -28,8 +28,6 @@ echo "AKS Subnet Id :" $aks_subnet_id
 az role assignment list --assignee $aks_sp_id 
 az role assignment create --assignee $aks_sp_id --scope $aks_vnet_id --role Contributor
 # az role assignment create --assignee $aks_sp_id --scope $aks_subnet_id --role "Network contributor"
-
-
 ```
 
 ## K3S VNet
@@ -43,8 +41,7 @@ k3s_vnet_id=$(az network vnet show --resource-group $k3s_rg_name --name $k3s_vne
 echo "K3S VNet Id :" $k3s_vnet_id	
 
 k3s_subnet_id=$(az network vnet subnet show --resource-group $k3s_rg_name --vnet-name $k3s_vnet_name --name $k3s_subnet_name --query id -o tsv)
-echo "K3S Subnet Id :" $k3s_subnet_id	
-
+echo "K3S Subnet Id :" $k3s_subnet_id
 ```
 
 ## GKE Network
