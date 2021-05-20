@@ -502,7 +502,7 @@ az k8s-configuration create --name "$arc_config_name_k3s-azure-voting-app" --clu
   --operator-instance-name "$arc_operator_instance_name_k3s-azure-voting-app" \
   --operator-namespace prod \
   --enable-helm-operator \
-  --helm-operator-version='0.6.0' \
+  --helm-operator-chart-version='1.2.0' # --helm-operator-version='0.6.0' \
   --helm-operator-params='--set helm.versions=v3' \
   --repository-url $gitops_helm_url \
   --operator-params='--git-readonly --git-path=releases/prod' \
@@ -581,7 +581,7 @@ az monitor log-analytics workspace create -n $analytics_workspace_name --locatio
 az monitor log-analytics workspace list
 az monitor log-analytics workspace show -n $analytics_workspace_name -g $k3s_rg_name --verbose
 
-export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $k3s_rg_name --query id)
+export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $k3s_rg_name -o tsv --query id)
 echo "analytics_workspace_id:" $analytics_workspace_id
 
 
@@ -790,10 +790,23 @@ helm uninstall azure-policy-addon
 
 az connectedk8s delete --name $azure_arc_k3s -g $k3s_rg_name -y # --kube-config $KUBECONFIG --kube-context $kubeContext
 
+# https://github.com/Azure/azure-cli-extensions/issues/3315
+
 # curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
 # bash disable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --kube-context $kubeContext
 # az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $k3s_rg_name
-az k8s-extension delete --name azuremonitor-containers --cluster-type connectedClusters --cluster-name $azure_arc_k3s  -g $k3s_rg_name
+az k8s-extension delete --name azuremonitor-containers --cluster-type connectedClusters --cluster-name $azure_arc_k3s  -g $k3s_rg_name -y
+k get sa -n kube-system
+k delete sa omsagent -n kube-system
+k get sa -n kube-system
+k get secrets -n kube-system
+k delete secret omsagent-secret -n kube-system
+k get cm -n kube-system
+k delete cm omsagent-rs-config -n kube-system
+k get cm -n kube-system
+k delete deploy omsagent-rs -n kube-system
+k get crd
+k delete crd healthstates.azmon.container.insights
 
 az k8s-configuration delete --name "$arc_config_name_k3s-azure-voting-app" --cluster-name $azure_arc_k3s --cluster-type connectedClusters -g $k3s_rg_name -y
 az k8s-configuration delete --name $arc_config_name_k3s --cluster-name $azure_arc_k3s --cluster-type connectedClusters -g $k3s_rg_name -y
