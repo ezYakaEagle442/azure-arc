@@ -44,16 +44,9 @@ k3s_subnet_id=$(az network vnet subnet show --resource-group $k3s_rg_name --vnet
 echo "K3S Subnet Id :" $k3s_subnet_id
 ```
 
-## GKE Network
-```sh
-
-```
-
-
 
 ## ARO VNet
 ```sh
-
 # ARO nodes VNet & Subnet
 az network vnet create --name $aro_vnet_name --resource-group $aro_rg_name --address-prefixes 172.32.0.0/21 --location $location
 az network vnet subnet create --name $aro_master_subnet_name --address-prefixes 172.32.1.0/24 --vnet-name $aro_vnet_name --resource-group $aro_rg_name --service-endpoints Microsoft.ContainerRegistry
@@ -66,12 +59,5 @@ aro_master_subnet_id=$(az network vnet subnet show --name $aro_master_subnet_nam
 echo "Master Subnet Id :" $aro_master_subnet_id	
 
 aro_worker_subnet_id=$(az network vnet subnet show --name $aro_worker_subnet_name --vnet-name $aro_vnet_name -g $aro_rg_name --query id -o tsv)
-echo "Worker Subnet Id :" $aro_worker_subnet_id	
-
-# https://docs.microsoft.com/en-us/azure/private-link/create-private-link-service-cli#disable-private-link-service-network-policies-on-subnet
-az network vnet subnet update --name $aro_master_subnet_name --vnet-name $aro_vnet_name -g $aro_rg_name --disable-private-link-service-network-policies true
-
-# https://docs.microsoft.com/en-us/azure/container-registry/container-registry-private-link#disable-network-policies-in-subnet
-az network vnet subnet update --name $aro_worker_subnet_name --vnet-name $aro_vnet_name -g $aro_rg_name --disable-private-endpoint-network-policies true
-
+echo "Worker Subnet Id :" $aro_worker_subnet_id
 ```
