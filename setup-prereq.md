@@ -1,4 +1,3 @@
-
 #  Enable resource providers
 ```sh
 az feature register --namespace Microsoft.Kubernetes --name previewAccess
@@ -13,10 +12,7 @@ az provider show -n Microsoft.KubernetesConfiguration -o table
 
 # Provider register: Register the Azure Policy provider: https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json
 az provider register --namespace 'Microsoft.PolicyInsights'
-
-
 ```
-
 
 # Install Azure-Arc CLI extension
 
@@ -30,9 +26,7 @@ az extension list -o table
 az extension update --name connectedk8s
 az extension update --name connectedmachine
 az extension update --name k8s-configuration
-
 ```
-
 
 # Create RG
 ```sh
@@ -43,7 +37,6 @@ az group create --name $common_rg_name --location $location
 az group create --name $gke_rg_name --location $location
 
 az group create --name rg-cloudshell-$location --location $location
-
 ```
 
 # Create Storage
@@ -53,8 +46,7 @@ This is not mandatory, you can create a storage account to play with CloudShell
 ```sh
 # https://docs.microsoft.com/en-us/cli/azure/storage/account?view=azure-cli-latest#az-storage-account-create
 # https://docs.microsoft.com/en-us/azure/storage/common/storage-introduction#types-of-storage-accounts
-az storage account create --name stcloudshellwe --kind StorageV2 --sku Standard_LRS -g rg-cloudshell-$location --location $location --https-only true
-
+az storage account create --name stcloudshellfr --kind StorageV2 --sku Standard_LRS -g rg-cloudshell-$location --location $location --https-only true
 ```
 
 # Generates your SSH keys
@@ -74,3 +66,7 @@ Keep the saved pull-secret.txt file somewhere safe - it will be used in each clu
 When running the az aro create command, you can reference your pull secret using the --pull-secret @pull-secret.txt parameter. Execute az aro create from the directory where you stored your pull-secret.txt file. Otherwise, replace @pull-secret.txt with @<path-to-my-pull-secret-file>.
 
 See also [https://github.com/stuartatmicrosoft/azure-aro#aro4-replace-pull-secretsh](https://github.com/stuartatmicrosoft/azure-aro#aro4-replace-pull-secretsh)
+
+# Setup Network
+
+[See section](setup-network.md)
