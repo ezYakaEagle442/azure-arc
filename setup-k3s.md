@@ -1,7 +1,7 @@
 See :
 - [https://github.com/rancher/k3s](https://github.com/rancher/k3s)
 - [https://rancher.com/docs/k3s](https://rancher.com/docs/k3s/latest/en/)
-- [https://github.com/likamrat/azure_arc/blob/master/azure_arc_k8s_jumpstart/docs/rancher_k3s_azure_arm_template.md](https://github.com/likamrat/azure_arc/blob/master/azure_arc_k8s_jumpstart/docs/rancher_k3s_azure_arm_template.md)
+- [https://github.com/microsoft/azure_arc/tree/main/azure_arc_k8s_jumpstart/rancher_k3s](https://github.com/microsoft/azure_arc/tree/main/azure_arc_k8s_jumpstart/rancher_k3s)
 - [https://github.com/likamrat/azure_arc/blob/master/azure_arc_k8s_jumpstart/rancher_k3s/azure/arm_template/scripts/install_k3s.sh](https://github.com/likamrat/azure_arc/blob/master/azure_arc_k8s_jumpstart/rancher_k3s/azure/arm_template/scripts/install_k3s.sh)
 
 # pre-requisites
@@ -169,6 +169,16 @@ echo "k3s_vm_pub_ip_address" $k3s_vm_pub_ip_address
 
 az network nic create --name $k3s_vm_name-nic --vnet-name $k3s_vnet_name --subnet $k3s_subnet_name --network-security-group $k3s_nsg --public-ip-address $k3s_vm_pub_ip --lb-name $k3s_lb --lb-address-pools k3sBackEndPool -g $k3s_rg_name
 
+# az vm image list-offers --publisher Canonical --location $location --output table
+# az vm image list --publisher Canonical --offer UbuntuServer --location $location --output table
+
+# az vm image list-publishers --location $location --output table
+# az vm image list-offers --publisher MicrosoftWindowsServer --location $location --output table
+# az vm image list --offer WindowsServer --publisher MicrosoftWindowsServer --location  $location --output table
+
+# az vm image list-offers --publisher RedHat --location $location --output table
+
+
 # When specifying an existing NIC, do not specify NSG, public IP, ASGs, VNet or subnet
 az vm create --name $k3s_vm_name \
     --image UbuntuLTS \
@@ -302,13 +312,14 @@ echo "with server: https://k3s."${k3s_lb_pub_ip_address}".xip.io:6443 "
 # sudo vim /etc/rancher/k3s/k3s.yaml
 
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+sudo mkdir /home/$k3s_admin_username/.kube
 sudo cp /etc/rancher/k3s/k3s.yaml /home/$k3s_admin_username/.kube/config
 
 sudo chown $k3s_admin_username:$k3s_admin_username /home/$k3s_admin_username/.kube/config
 sudo chown $k3s_admin_username:$k3s_admin_username /home/$k3s_admin_username/.kube
 ls -al /home/$k3s_admin_username/.kube
 cat /home/$k3s_admin_username/.kube/config
-chmod 744 /home/$k3s_admin_username/.kube/config
+sudo chmod 744 /home/$k3s_admin_username/.kube/config
 
 helm ls -A
 
@@ -393,7 +404,7 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/connect-cluster
 azure_arc_ns="azure-arc"
 
 # Deploy Azure Arc Agents for Kubernetes using Helm 3, into the azure-arc namespace
-az connectedk8s connect --name $azure_arc_k3s -l $location -g $k3s_rg_name
+az connectedk8s connect --name $azure_arc_k3s --infrastructure azure -l $location -g $k3s_rg_name
 k get crds
 k get azureclusteridentityrequests.clusterconfig.azure.com -n $azure_arc_ns
 k describe azureclusteridentityrequests.clusterconfig.azure.com config-agent-identity-request -n $azure_arc_ns
@@ -443,6 +454,7 @@ k create namespace $arc_gitops_namespace
 az k8s-configuration create --name $arc_config_name_k3s --cluster-name $azure_arc_k3s -g $k3s_rg_name --cluster-type connectedClusters \
   --repository-url $gitops_url \
   --enable-helm-operator true \
+  --helm-operator-chart-version='1.2.0' \
   --operator-namespace $arc_gitops_namespace \
   --operator-instance-name $arc_operator_instance_name_k3s \
   --operator-type flux \
@@ -584,10 +596,6 @@ az monitor log-analytics workspace show -n $analytics_workspace_name -g $k3s_rg_
 export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $k3s_rg_name -o tsv --query id)
 echo "analytics_workspace_id:" $analytics_workspace_id
 
-
-# https://github.com/Azure/azure-cli/issues/8401 --query id ==> -o tsv is NECESSARY
-export azureArc_K3S_ClusterResourceId=$(az connectedk8s show -g $k3s_rg_name --name $azure_arc_k3s --query id -o tsv)
-
 k config view --minify
 k config get-contexts
 k config rename-context default k3s-default
@@ -598,9 +606,9 @@ helm ls --kube-context k3s-default -v=10
 
 # curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
 # if the above test fails the enable-monitoring.sh script will fails as well ...
-# bash enable-monitoring.sh --resource-id $azureArc_K3S_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
+# bash enable-monitoring.sh --resource-id $azure_arc_k3s_id --workspace-id $analytics_workspace_id --kube-context $kubeContext
 
-az k8s-extension create --name azuremonitor-containers --cluster-name $azure_arc_k3s --resource-group $k3s_rg_name --cluster-type connectedClusters --extension-type Microsoft.AzureMonitor.Containers --configuration-settings logAnalyticsWorkspaceResourceID=$analytics_workspace_id omsagent.resources.daemonset.limits.cpu=150m omsagent.resources.daemonset.limits.memory=600Mi omsagent.resources.deployment.limits.cpu=1 omsagent.resources.deployment.limits.memory=750Mi
+az k8s-extension create --name azuremonitor-containers --cluster-name $azure_arc_k3s --resource-group $k3s_rg_name --cluster-type connectedClusters --extension-type Microsoft.AzureMonitor.Containers --configuration-settings logAnalyticsWorkspaceResourceID=$analytics_workspace_id omsagent.resources.daemonset.limits.cpu=150m omsagent.resources.daemonset.limits.memory=600Mi omsagent.resources.deployment.limits.cpu=1 omsagent.resources.deployment.limits.memory=750Mi --yes
 
 az k8s-extension list --cluster-name $azure_arc_k3s --resource-group $k3s_rg_name --cluster-type connectedClusters 
 azmon_extension_state=$(az k8s-extension show --name azuremonitor-containers --cluster-name $azure_arc_k3s --resource-group $k3s_rg_name --cluster-type connectedClusters --query 'installState')
@@ -771,6 +779,33 @@ m.group(0)
 
 
 ```
+
+
+## Deploy Arc enabled Open Service Mesh
+
+See [Azure Arc-enabled Open Service Mesh](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/tutorial-arc-enabled-open-service-mesh)
+
+Following Kubernetes distributions are currently supported
+- AKS Engine
+- Cluster API Azure
+- Google Kubernetes Engine
+- Canonical Kubernetes Distribution
+- Rancher Kubernetes Engine
+- OpenShift Kubernetes Distribution
+- Amazon Elastic Kubernetes Service
+
+Azure Monitor integration with Azure Arc enabled Open Service Mesh is available with limited support.
+
+```sh
+export VERSION=0.8.4
+export $CLUSTER_NAME=<arc-cluster-name>
+export $RESOURCE_GROUP=<resource-group-name>
+
+az k8s-extension create --cluster-name $CLUSTER_NAME --resource-group $RESOURCE_GROUP --cluster-type connectedClusters --extension-type Microsoft.openservicemesh --scope cluster --release-train pilot --name osm --version $VERSION
+
+```
+
+
 
 ## IoT Edge workloads integration
 
