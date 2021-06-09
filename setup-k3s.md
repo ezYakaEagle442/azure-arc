@@ -469,6 +469,20 @@ repositoryPublicKey=$(az k8s-configuration show --cluster-name $azure_arc_k3s --
 echo "repositoryPublicKey : " $repositoryPublicKey
 echo "Add this Public Key to your GitHub Project Deploy Key and allow write access at https://github.com/$github_usr/arc-k8s-demo/settings/keys"
 
+echo "If you forget to add the GitHub SSH Key, you will see in the GitOps pod the error below : "
+echo "Permission denied (publickey). fatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights nand the repository exists."
+
+# troubleshooting: 
+for pod in $(k get po -L app=helm-operator -n $arc_gitops_namespace -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"=~"^$arc_operator_instance_name_eks*" ]]
+    then
+      echo "Verifying GitOps config Pod $pod"
+      k logs $pod -n $arc_gitops_namespace | grep -i "Error"
+      k logs $pod -n $arc_gitops_namespace | grep -i "Permission denied (publickey)"
+  fi
+done
+
 # notices the new Pending configuration
 complianceState=$(az k8s-configuration show --cluster-name $azure_arc_k3s --name $arc_config_name_k3s -g $k3s_rg_name --cluster-type connectedClusters --query 'complianceStatus.complianceState')
 echo "Compliance State " : $complianceState
