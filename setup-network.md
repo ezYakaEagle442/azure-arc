@@ -60,4 +60,12 @@ echo "Master Subnet Id :" $aro_master_subnet_id
 
 aro_worker_subnet_id=$(az network vnet subnet show --name $aro_worker_subnet_name --vnet-name $aro_vnet_name -g $aro_rg_name --query id -o tsv)
 echo "Worker Subnet Id :" $aro_worker_subnet_id
+
+
+# https://docs.microsoft.com/en-us/azure/private-link/create-private-link-service-cli#disable-private-link-service-network-policies-on-subnet
+az network vnet subnet update --name $aro_master_subnet_name --vnet-name $aro_vnet_name -g $aro_rg_name --disable-private-link-service-network-policies true
+
+# https://docs.microsoft.com/en-us/azure/container-registry/container-registry-private-link#disable-network-policies-in-subnet
+az network vnet subnet update --name $aro_worker_subnet_name --vnet-name $aro_vnet_name -g $aro_rg_name --disable-private-endpoint-network-policies true
+
 ```
