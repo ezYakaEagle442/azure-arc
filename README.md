@@ -20,7 +20,7 @@ See also :
 - [https://azurearcjumpstart.io](https://azurearcjumpstart.io)
 - [Install a single node Cluster on Windows 10](https://download.microsoft.com/download/b/8/e/b8ecef54-3612-4883-a73c-6b9f6dd63a61/Install-a-single-node-cluster-of-Kubernetes-on-Windows-10.pdf)
 - [//Build video Azure Arc and Kubernetes: a Developer Story](https://mybuild.microsoft.com/sessions/42d3ed24-6773-45c8-82bd-6dec4a583c89)
-- []() : in French / en Français ! 
+- [MS //Build 2021 video: Dev to Dev](https://mybuild.microsoft.com/sessions/b0c1ab4e-735d-4c3f-bf2a-0ce6103a07cd) : in French / en Français ! 
 
 ![Azure Arc](./img/Azure_Arc.png)
 
