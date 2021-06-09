@@ -171,8 +171,9 @@ choco upgrade terraform --Yes --confirm --accept-license
 
 ## How to install Terraform on Ubuntu or WSL
 [see this blog](https://techcommunity.microsoft.com/t5/azure-developer-community-blog/configuring-terraform-on-windows-10-linux-sub-system/ba-p/393845)
+[https://learn.hashicorp.com/tutorials/terraform/install-cli?in=terraform/azure-get-started](https://learn.hashicorp.com/tutorials/terraform/install-cli?in=terraform/azure-get-started)
 ```sh
-TF_VER=0.14.10
+TF_VER=0.15.5
 echo "Installing TF version " $TF_VER
 sudo apt-get install unzip
 wget https://releases.hashicorp.com/terraform/$TF_VER/terraform_${TF_VER}_linux_amd64.zip -O terraform.zip;
@@ -391,9 +392,25 @@ sudo apt-get install azure-cli # azure-cli=2.16.0-1~bionic
 sudo apt-get update && sudo apt-get install --only-upgrade -y azure-cli
 sudo apt-get upgrade azure-cli
 
+az version
 az login
 
 ```
+
+# Install  AZ Data CLI
+
+See [https://docs.microsoft.com/en-us/sql/azdata/install/deploy-install-azdata-linux-package?view=sql-server-ver15](https://docs.microsoft.com/en-us/sql/azdata/install/deploy-install-azdata-linux-package?view=sql-server-ver15)
+
+```sh
+sudo apt-get update
+sudo apt-get install -y azdata-cli
+
+azdata
+azdata --version
+
+sudo apt-get update && sudo apt-get install --only-upgrade -y azdata-cli
+```
+
 
 ## Install the AZ ARO extension
 AZ ARO is now included in the az core CLI
@@ -755,6 +772,56 @@ See :
 ```sh
 https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-298.0.0-windows-x86_64-bundled-python.zip
 .\google-cloud-sdk\install.bat
+```
+
+## Install AWS CLI on Linux
+
+See :
+- [AWS SDK doc](https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_eks.html)
+- [AWS CLI install doc](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
+- [AWS regions-zones](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html)
+- [Getting started with Amazon EKS](https://docs.aws.amazon.com/eks/latest/userguide/getting-started.html)
+- [Configure AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
+- [AWS Free account creation](https://aws.amazon.com/free)
+```sh
+# sudo apt install awscli
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+which aws
+ls -l /usr/local/bin/aws
+aws --version
+
+# https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-creds
+aws configure
+export AWS_ACCESS_KEY_ID="an access key"
+export AWS_SECRET_ACCESS_KEY="a secret key"
+export AWS_DEFAULT_REGION="us-west-2"
+
+# Installing or upgrading eksctl: https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+sudo mv /tmp/eksctl /usr/local/bin
+eksctl version
+
+# Install AWS IAM Authenticator : https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html
+curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/aws-iam-authenticator
+curl -o aws-iam-authenticator.sha256 https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/aws-iam-authenticator.sha256
+openssl sha1 -sha256 aws-iam-authenticator
+
+chmod +x ./aws-iam-authenticator
+mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$PATH:$HOME/bin
+echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+aws-iam-authenticator help
+aws-iam-authenticator version
+
+```
+
+## Install AWS CLI on Windows
+```sh
+# msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi
+# with chocolatey
+choco install awscli --Yes --accept-license
 ```
 
 ## Kube Tools
