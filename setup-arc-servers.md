@@ -1,5 +1,7 @@
 
-[https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/azure/azure_arm_template_linux/](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/azure/azure_arm_template_linux/)
+- [https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/azure/azure_arm_template_linux/](https://azurearcjumpstart.io/azure_arc_jumpstart/azure_arc_servers/azure/azure_arm_template_linux/)
+- [https://github.com/microsoft/azure_arc/tree/main/azure_arc_servers_jumpstart/azure](https://github.com/microsoft/azure_arc/tree/main/azure_arc_servers_jumpstart/azure)
+
 
 # Pre-req
 ```sh
