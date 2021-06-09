@@ -89,7 +89,7 @@ azdata arc dc upload --path C:\Tmp\arc_data_ctr_aks_pgsql_usage.json
 ## GCP Pre-req
 ```sh
 gcloud version
-sudo /home/$USER/google-cloud-sdk/bin/gcloud components update
+sudo /home/$USER/google-cloud-sdk/bin/gcloud components update -Y
 
 gcloud auth login $GKE_ACCOUNT
 
@@ -110,15 +110,17 @@ Copy the credentials JSON file to the azure_arc_servers_jumpstart/gcp/ubuntu/ter
 [https://cloud.google.com/iam/docs/creating-managing-service-account-keys](https://cloud.google.com/iam/docs/creating-managing-service-account-keys)
 
 ```sh
-gcloud iam service-accounts create sa-azure-arc-data --display-name="Azure Arc for Data Service Account" --description="Azure Arc for Data Service Account"
-gcloud iam service-accounts list
-gcloud iam service-accounts describe sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com | grep -i "uniqueId: "
+gcloud iam service-accounts create sa-azure-arc-data --display-name="Azure Arc for Data Service Account" --description="Azure Arc for Data Service Account" --project $GKE_DATA_PROJECT_ID
 
-gcloud iam service-accounts keys create ~/gke-arc-data-sa-key.json --iam-account sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com
-gcloud iam service-accounts keys list --iam-account sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com
+gcloud iam service-accounts list --project $GKE_DATA_PROJECT_ID
+gcloud iam service-accounts describe sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com --project $GKE_DATA_PROJECT_ID | grep -i "uniqueId: "
+
+gcloud iam service-accounts keys create ~/gke-arc-data-sa-key.json --iam-account sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com --project $GKE_DATA_PROJECT_ID
+gcloud iam service-accounts keys list --iam-account sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com --project $GKE_DATA_PROJECT_ID
 
 gcloud container clusters list --project $GKE_DATA_PROJECT_ID
 gcloud config set project $GKE_DATA_PROJECT
+gcloud config set project $GKE_DATA_PROJECT_ID
 gcloud config list
 gcloud container clusters list --project $GKE_DATA_PROJECT_ID
 
@@ -132,7 +134,7 @@ gcloud container get-server-config --zone $GKE_ZONE
 # https://stackoverflow.com/questions/48232189/google-compute-engine-required-compute-zones-get-permission-error
 # requires roles: roles/compute.instanceAdmin , roles/editor , roles/iam.serviceAccountUser
 
-# IMPRTANT : SA must be owner
+# IMPORTANT : SA must be owner
 gcloud projects add-iam-policy-binding $GKE_DATA_PROJECT_ID \
     --member="serviceAccount:sa-azure-arc-data@$GKE_DATA_PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/owner"
@@ -197,7 +199,7 @@ sed -i "s/{admin username}/azarc-admin/g" ./scripts/vars.sh
 sed -i "s/{admin password}/${ADM_PWD}/g" ./scripts/vars.sh
 sed -i "s/{subscription id}/${subId}/g" ./scripts/vars.sh
 sed -i "s/{client id}/${arc_data_sp_id}/g" ./scripts/vars.sh
-sed -i "s/{client secret}/${arc_data_sp_password}/g" v./scripts/ars.sh
+sed -i "s/{client secret}/${arc_data_sp_password}/g" ./scripts/vars.sh
 sed -i "s/{tenant id}/${tenantId}/g" ./scripts/vars.sh
 sed -i "s/{resource group}/${arc_data_gke_rg_name}/g" ./scripts/vars.sh
 
@@ -219,8 +221,163 @@ terraform init
 # terraform plan
 terraform apply --auto-approve
 
+#if you goit thise error:
+Error: googleapi: Error 400: Basic authentication was removed for GKE cluster versions >= 1.19. The cluster cannot be created with basic authentication enabled. Instructions for choosing an alternative authentication method can be found at: https://cloud.google.com/kubernetes-engine/docs/how-to/api-server-authentication., badRequest
+
+==> then try to modify issue_client_certificate = false to issue_client_certificate = true in azure_arc_data_jumpstart/gke/postgres_hs/terraform/gke_cluster.tf
+
+Then I hit
+Error: googleapi: Error 400: Clusters with minor version 1.18 and basic authentication enabled cannot migrate to rapid, regular or stable release channels. Basic authentication was removed for GKE cluster versions >= 1.19. To disable basic authentication use: `gcloud container clusters update %s --no-enable-basic-auth`. Instructions for choosing a new method can be found at: https://cloud.google.com/kubernetes-engine/docs/how-to/api-server-authentication., badRequest
+
+See 
+https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/container_cluster
+https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/container_node_pool
+
 gcp_vm_ip=$(terraform output |  tr -d '"'  |  tr -d 'ip =') 
 rdp azarc-admin@$gcp_vm_ip
+
+# manual GKE creation
+# https://docs.microsoft.com/en-us/azure/azure-arc/data/sizing-guidance#minimum-deployment-requirements
+
+gcloud container clusters create gke-arc-data-enabled --project $GKE_DATA_PROJECT_ID \
+    --zone=$GKE_ZONE \
+    --node-locations=$GKE_ZONE \
+    --disk-type=pd-ssd \
+    --disk-size=50GB \
+    --machine-type=n2-standard-4 \
+    --num-nodes=3 \
+    --image-type ubuntu
+
+# check at https://console.cloud.google.com/kubernetes/list?project=$GKE_DATA_PROJECT_ID 
+# you may verified that 2 nodes have been created into the default nodepool, 1 per zone if you did create cluster with --zone europe-west4
+
+gcloud container clusters list --project $GKE_DATA_PROJECT_ID 
+gcloud container clusters get-credentials $GKE_DATA_PROJECT --zone $GKE_ZONE --project $GKE_DATA_PROJECT_ID
+
+cat gke-config
+cat ~/.kube/config
+k config view --minify
+k config get-contexts
+k cluster-info
+
+k create clusterrolebinding cluster-admin-binding \
+  --clusterrole cluster-admin \
+  --user $(gcloud config get-value account)
+
+azure_arc_ns="azure-arc"
+
+# Deploy Azure Arc Agents for Kubernetes using Helm 3, into the azure-arc namespace
+az connectedk8s connect --name $azure_arc_gke --infrastructure gcp -l $location -g $gke_rg_name
+
+# verify
+az connectedk8s list --subscription $subId -o table
+az connectedk8s list -g $gke_rg_name -o table
+
+ADSExtensionName="ads-extension"
+
+# -o tsv is MANDATORY to remove quotes
+azure_arc_gke_id=$(az connectedk8s show --name $azure_arc_gke -g $gke_rg_name -o tsv --query id)
+
+az k8s-extension create --name ${ADSExtensionName} -c ${azure_arc_gke} -g ${gke_rg_name} --cluster-type connectedClusters --extension-type microsoft.arcdataservices --auto-upgrade false --scope cluster --release-namespace arc --config Microsoft.CustomLocation.ServiceAccount=sa-bootstrapper
+
+az k8s-extension show --name ${ADSExtensionName} -g ${gke_rg_name} -c ${azure_arc_gke}  --cluster-type connectedclusters
+
+
+export clNamespace=arc
+export extensionId=$(az k8s-extension show -g ${gke_rg_name} -c ${azure_arc_gke} --cluster-type connectedClusters --name ${ADSExtensionName} --query id -o tsv)
+
+az customlocation create -g ${gke_rg_name} -n "my-data-ship"  --namespace ${clNamespace} \
+  --host-resource-id ${azure_arc_gke_id} \
+  --cluster-extension-ids ${extensionId} --location westeurope
+
+az customlocation list -o table
+```
+
+
+### Create the Azure Arc data controller
+After the extension and custom location are created, proceed to Azure portal to deploy the Azure Arc data controller.
+
+Log into the Azure portal.
+Search for "Azure Arc data controller" in the Azure Marketplace and initiate the Create flow.
+In the Prerequisites section, ensure that the Azure Arc enabled Kubernetes cluster (direct mode) is selected and proceed to the next step.
+In the Data controller details section, choose a subscription and resource group.
+Enter a name for the data controller.
+Choose a configuration profile based on the Kubernetes distribution provider you are deploying to.
+Choose the Custom Location that you created in the previous step.
+Provide details for the data controller administrator login and password.
+Provide details for ClientId, TenantId, and Client Secret for the Service Principal that would be used to create the Azure objects. See Upload metrics for detailed instructions on creating a Service Principal account and the roles that needed to be granted for the account.
+Click Next, review the summary page for all the details and click on Create.
+
+```sh
+az monitor log-analytics workspace list
+az monitor log-analytics workspace create -n $analytics_workspace_name --location $location -g $gke_rg_name --verbose
+az monitor log-analytics workspace list
+az monitor log-analytics workspace show -n $analytics_workspace_name -g $gke_rg_name --verbose
+
+export analytics_workspace_id=$(az monitor log-analytics workspace show -n $analytics_workspace_name -g $gke_rg_name -o tsv --query id)
+echo "analytics_workspace_id:" $analytics_workspace_id
+
+k get datacontrollers -n arc
+
+```
+
+### Create an Azure Arc enabled PostgreSQL Hyperscale server group
+
+see [https://kubernetes.io/docs/concepts/storage/storage-classes/#gce-pd](https://kubernetes.io/docs/concepts/storage/storage-classes/#gce-pd)
+
+```sh
+azdata login
+azdata arc postgres server create --help
+
+# only AccessModes [ReadWriteOnce ReadOnlyMany] are supported
+cat <<EOF >> deploy/GKE_BackupPVC.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-pvc
+  namespace: arc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: standard
+EOF
+
+cat deploy/GKE_BackupPVC.yaml
+k apply -f deploy/GKE_BackupPVC.yaml
+k get pvc -n arc
+
+# --storage-class-backups means “Use this storage class to create backup volumes for me.” “-vcm x:backup” means “Don’t create backup volumes for #me. Use this pre-existing volume.”
+# The two options are in conflict.
+
+azdata arc postgres server create -n postgres01 --workers 2 --engine-version 12 \
+-vcm backup-pvc:backup \
+--storage-class-data standard-rwo \
+--storage-class-logs standard-rwo
+
+azdata arc postgres server list
+azdata arc postgres endpoint list -n postgres01
+
+```
+
+### Back up and restore Azure Arc enabled PostgreSQL Hyperscale server groups
+
+See [https://docs.microsoft.com/en-us/azure/azure-arc/data/backup-restore-postgresql-hyperscale](https://docs.microsoft.com/en-us/azure/azure-arc/data/backup-restore-postgresql-hyperscale)
+
+```sh
+
+azdata arc postgres backup create --name backup_pg_20210608-0900am --server-name postgres01
+azdata arc postgres backup list --server-name postgres01
+
+# get the backup ID for restore : 
+azdata arc postgres backup show --name backup_pg_20210608-0900am --server-name postgres01
+
+# Restore the server group postgres01 onto itself:
+azdata arc postgres backup restore -sn postgres01 --backup-id d134f51aa87f4044b5fb07cf95cf797f
+
 
 ```
 
@@ -299,7 +456,6 @@ gcp_vm_ip=$(terraform output |  tr -d '"'  |  tr -d 'ip =')
 rdp azarc-admin@$gcp_vm_ip
 
 ```
-
 
 ## Toubleshoot
 
