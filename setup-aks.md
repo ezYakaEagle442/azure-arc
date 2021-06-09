@@ -107,7 +107,10 @@ To learn more about UDR, see [https://docs.microsoft.com/en-us/azure/virtual-net
 az aks create --name $aks_cluster_name \
     --resource-group $aks_rg_name \
     --node-resource-group $cluster_rg_name \
-    --node-count 3 \
+    --zones 1 2 3 \
+    --enable-cluster-autoscaler \
+    --min-count=1 \
+    --max-count=3 \
     --location $location \
     --vnet-subnet-id $aks_subnet_id \
     --service-cidr 10.42.0.0/24 \
@@ -158,7 +161,7 @@ export KUBECONFIG=~/.kube/config
 k config view --minify
 k config get-contexts
 
-export kubeContext=$aks_cluster_name
+export KUBECONTEXT=$aks_cluster_name
 k config use-context $aks_cluster_name
 
 aks_api_server_url=$(az aks show -n $aks_cluster_name -g $aks_rg_name --query 'fqdn' -o tsv)
@@ -276,7 +279,7 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/connect-cluster
 azure_arc_ns="azure-arc"
 
 # Deploy Azure Arc Agents for Kubernetes using Helm 3, into the azure-arc namespace
-az connectedk8s connect --name $azure_arc_aks  -l $location -g $aks_rg_name # --kube-config $KUBECONFIG --kube-context $kubeContext
+az connectedk8s connect --name $azure_arc_aks --infrastructure azure -l $location -g $aks_rg_name --kube-config $KUBECONFIG --kube-context $KUBECONTEXT
 k get crds
 k get azureclusteridentityrequests.clusterconfig.azure.com -n $azure_arc_ns
 k describe azureclusteridentityrequests.clusterconfig.azure.com config-agent-identity-request -n $azure_arc_ns
@@ -301,6 +304,9 @@ k get po -l app.kubernetes.io/component=resource-sync-agent -n $azure_arc_ns
 
 k logs -l app.kubernetes.io/component=config-agent -c config-agent -n $azure_arc_ns 
 
+# -o tsv is MANDATORY to remove quotes
+azure_arc_aks_id=$(az connectedk8s show --name $azure_arc_aks -g $aks_rg_name -o tsv --query id)
+
 ```
 
 ## Enable GitOps on a connected cluster
@@ -317,14 +323,6 @@ AKS clusters created with Managed Identity (MSI) are not supported yet.
 ```sh
 
 tenantId=$(az account show --query tenantId -o tsv)
-
-helm upgrade azure-k8s-config azurearcfork8s/azure-k8s-config --install \
-  --set global.subscriptionId=${subId} \
-  --set global.resourceGroupName=${aks_rg_name} \
-  --set global.resourceName=${aks_cluster_name} \
-  --set global.location=${location} \
-  --set global.tenantId=${tenantId}
-
 git clone $gitops_url
 
 k create namespace $arc_gitops_namespace
@@ -332,9 +330,10 @@ k create namespace $arc_gitops_namespace
 # https://docs.fluxcd.io/en/1.17.1/faq.html#will-flux-delete-resources-when-i-remove-them-from-git
 # Will Flux delete resources when I remove them from git?
 # Flux has an garbage collection feature, enabled by passing the command-line flag --sync-garbage-collection to fluxd
-az k8s-configuration create --name $arc_config_name_aks --cluster-name $azure_arc_aks -g $aks_rg_name --cluster-type managedClusters \
+az k8s-configuration create --name $arc_config_name_aks --cluster-name $azure_arc_aks -g $aks_rg_name --cluster-type connectedClusters \
   --repository-url $gitops_url \
   --enable-helm-operator true \
+  --helm-operator-chart-version='1.2.0' \
   --helm-operator-params '--set helm.versions=v3' \
   --operator-namespace $arc_gitops_namespace \
   --operator-instance-name $arc_operator_instance_name_aks \
@@ -342,15 +341,15 @@ az k8s-configuration create --name $arc_config_name_aks --cluster-name $azure_ar
   --operator-params='--git-poll-interval=1m --sync-garbage-collection' \
   --scope cluster # namespace
 
-az k8s-configuration list --cluster-name $azure_arc_aks -g $aks_rg_name --cluster-type managedClusters
-az k8s-configuration show --name $arc_config_name_aks --cluster-name $azure_arc_aks  -g $aks_rg_name --cluster-type managedClusters
+az k8s-configuration list --cluster-name $azure_arc_aks -g $aks_rg_name --cluster-type connectedClusters
+az k8s-configuration show --name $arc_config_name_aks --cluster-name $azure_arc_aks -g $aks_rg_name --cluster-type connectedClusters
 
-repositoryPublicKey=$(az k8s-configuration show --cluster-name $azure_arc_aks --name $arc_config_name_aks -g $aks_rg_name --cluster-type managedClusters --query 'repositoryPublicKey')
+repositoryPublicKey=$(az k8s-configuration show --cluster-name $azure_arc_aks --name $arc_config_name_aks -g $aks_rg_name --cluster-type connectedClusters --query 'repositoryPublicKey')
 echo "repositoryPublicKey : " $repositoryPublicKey
 echo "Add this Public Key to your GitHub Project Deploy Key and allow write access at https://github.com/$github_usr/arc-k8s-demo/settings/keys"
 
 # notices the new Pending configuration
-complianceState=$(az k8s-configuration show --cluster-name $azure_arc_aks --name $arc_config_name_aks -g $aks_rg_name --cluster-type managedClusters --query 'complianceStatus.complianceState')
+complianceState=$(az k8s-configuration show --cluster-name $azure_arc_aks --name $arc_config_name_aks -g $aks_rg_name --cluster-type connectedClusters --query 'complianceStatus.complianceState')
 echo "Compliance State " : $complianceState
 
 k get events -A 
@@ -359,7 +358,7 @@ k describe gitconfigs.clusterconfig.azure.com -n $arc_gitops_namespace
 
 # https://kubernetes.io/docs/concepts/extend-kubernetes/operator
 # https://github.com/fluxcd/helm-operator/blob/master/chart/helm-operator/CHANGELOG.md#060-2020-01-26
-k get po -L app=helm-operator -n $arc_gitops_namespace
+k get po -L app=helm-operator -A
 k describe po aks-cluster-config-helm-gitops-helm-operator-c546b564b-glcf5 -n $arc_gitops_namespace | grep -i "image" # ==> Image: docker.io/fluxcd/helm-operator:1.0.0-rc4
 # https://hub.docker.com/r/fluxcd/helm-operator/tags
 ```
@@ -391,21 +390,21 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/use-gitops-with
 
 ```sh
 
-az k8s-configuration create --name "$arc_config_name_aks-azure-voting-app" --cluster-name $azure_arc_aks -g $aks_rg_name \
-  --operator-instance-name "$arc_operator_instance_name_aks-azure-voting-app" \
+az k8s-configuration create --name "$arc_config_name_aks-voting-app" --cluster-name $azure_arc_aks -g $aks_rg_name \
+  --operator-instance-name "$arc_operator_instance_name_aks-voting-app" \
   --operator-namespace prod \
   --enable-helm-operator \
-  --helm-operator-version='0.6.0' \
+  --helm-operator-chart-version='1.2.0' \
   --helm-operator-params='--set helm.versions=v3' \
   --repository-url $gitops_helm_url \
   --operator-params='--git-readonly --git-path=releases/prod' \
   --scope namespace \
-  --cluster-type managedClusters
+  --cluster-type connectedClusters
 
-az k8s-configuration show --resource-group $aks_rg_name --name "$arc_config_name_aks-azure-voting-app" --cluster-name $azure_arc_aks --cluster-type managedClusters
+az k8s-configuration show --resource-group $aks_rg_name --name "$arc_config_name_aks-voting-app" --cluster-name $azure_arc_aks --cluster-type connectedClusters
 
 # notices the new Pending configuration
-complianceState=$(az k8s-configuration show --cluster-name $azure_arc_aks --name "$arc_config_name_aks-azure-voting-app" -g $aks_rg_name --cluster-type managedClusters --query 'complianceStatus.complianceState')
+complianceState=$(az k8s-configuration show --cluster-name $azure_arc_aks --name "$arc_config_name_aks-voting-app" -g $aks_rg_name --cluster-type connectedClusters --query 'complianceStatus.complianceState')
 echo "Compliance State " : $complianceState
 
 # Verify the App
@@ -486,12 +485,12 @@ export azureArc_AKS_ClusterResourceId=$(az aks show -n $aks_cluster_name -g $aks
 k config view --minify
 k config get-contexts
 k config current-context
-k config use-context $kubeContext
+k config use-context $KUBECONTEXT
 
 # curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
-# bash enable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $kubeContext
+# bash enable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --workspace-id $analytics_workspace_id --kube-context $KUBECONTEXT
 
-helm ls --kube-context $kubeContext -v=10
+helm ls --kube-context $KUBECONTEXT -v=10
 helm search repo azuremonitor-containers
 
 az k8s-extension create --name azuremonitor-containers --cluster-name $aks_cluster_name --resource-group $aks_rg_name --cluster-type connectedClusters --extension-type Microsoft.AzureMonitor.Containers --configuration-settings logAnalyticsWorkspaceResourceID=$analytics_workspace_id omsagent.resources.daemonset.limits.cpu=150m omsagent.resources.daemonset.limits.memory=600Mi omsagent.resources.deployment.limits.cpu=1 omsagent.resources.deployment.limits.memory=750Mi
@@ -550,7 +549,7 @@ az aks enable-addons --addons azure-policy --name $aks_cluster_name --resource-g
 
 # Setup on AKS as Arc enabled cluster
 #helm install azure-policy-addon azure-policy/azure-policy-addon-arc-clusters \
-#    --set azurepolicy.env.resourceid=$azureArc_aks_ClusterResourceId \
+#    --set azurepolicy.env.resourceid=$azure_arc_aks_id \
 #    --set azurepolicy.env.clientid=$aks_sp_id \
 #    --set azurepolicy.env.clientsecret=$aks_sp_password  \
 #    --set azurepolicy.env.tenantid=$tenantId
@@ -661,18 +660,18 @@ export KUBECONFIG=~/.kube/config
 k config use-context $aks_cluster_name
 k config view --minify
 k config get-contexts
-export kubeContext=$aks_cluster_name
+export KUBECONTEXT=$aks_cluster_name
 
 
 helm uninstall azure-policy-addon
 
-az connectedk8s delete --name $azure_arc_aks -g $aks_rg_name -y # --kube-config $KUBECONFIG --kube-context $kubeContext
+az connectedk8s delete --name $azure_arc_aks -g $aks_rg_name -y # --kube-config $KUBECONFIG --kube-context $KUBECONTEXT
 
 
 # az aks disable-addons -a monitoring -n $aks_cluster_name -g $aks_rg_name
 
 # curl -o disable-monitoring.sh -L https://aka.ms/disable-monitoring-bash-script
-# bash disable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --kube-context $kubeContext
+# bash disable-monitoring.sh --resource-id $azureArc_AKS_ClusterResourceId --kube-context $KUBECONTEXT
 # az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $aks_rg_name
 
 az k8s-extension delete --name azuremonitor-containers --cluster-type connectedClusters --cluster-name $aks_cluster_name  -g $aks_rg_name
