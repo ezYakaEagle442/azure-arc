@@ -21,11 +21,13 @@ az extension list-available
 az extension add -n connectedk8s --yes
 az extension add -n k8s-configuration --yes
 az extension add --name connectedmachine --yes
+az extension add --name customlocation --yes 
 az extension list -o table
 
 az extension update --name connectedk8s
 az extension update --name connectedmachine
 az extension update --name k8s-configuration
+az extension update --name customlocation
 ```
 
 # Create RG
@@ -35,6 +37,7 @@ az group create --name $aro_rg_name --location $location
 az group create --name $k3s_rg_name --location $location
 az group create --name $common_rg_name --location $location
 az group create --name $gke_rg_name --location $location
+az group create --name $eks_rg_name --location $location
 
 az group create --name rg-cloudshell-$location --location $location
 ```
