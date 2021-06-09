@@ -1,5 +1,5 @@
 See :
-- [https://github.com/likamrat/azure_arc/blob/master/azure_arc_k8s_jumpstart/docs/gke_terraform.md](https://github.com/likamrat/azure_arc/blob/master/azure_arc_k8s_jumpstart/docs/gke_terraform.md)
+- [https://github.com/microsoft/azure_arc/tree/main/azure_arc_k8s_jumpstart/gke](https://github.com/microsoft/azure_arc/tree/main/azure_arc_k8s_jumpstart/gke)
 - [https://cloud.google.com/kubernetes-engine/docs/quickstart](https://cloud.google.com/kubernetes-engine/docs/quickstart)
 - [https://cloud.google.com/kubernetes-engine/docs/how-to/cluster-access-for-kubectl](https://cloud.google.com/kubernetes-engine/docs/how-to/cluster-access-for-kubectl)
 - [https://cloud.google.com/sdk/gcloud/reference/container/clusters/create](https://cloud.google.com/sdk/gcloud/reference/container/clusters/create)
@@ -96,7 +96,7 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/connect-cluster
 azure_arc_ns="azure-arc"
 
 # Deploy Azure Arc Agents for Kubernetes using Helm 3, into the azure-arc namespace
-az connectedk8s connect --name $azure_arc_gke -l $location -g $gke_rg_name
+az connectedk8s connect --name $azure_arc_gke --infrastructure gcp -l $location -g $gke_rg_name
 k get crds
 k get azureclusteridentityrequests.clusterconfig.azure.com -n $azure_arc_ns
 k describe azureclusteridentityrequests.clusterconfig.azure.com config-agent-identity-request -n $azure_arc_ns
@@ -123,6 +123,7 @@ k get po -l app.kubernetes.io/component=cluster-metadata-operator -n $azure_arc_
 k get po -l app.kubernetes.io/component=resource-sync-agent -n $azure_arc_ns
 
 k logs -l app.kubernetes.io/component=config-agent -c config-agent -n $azure_arc_ns 
+
 
 ```
 
@@ -531,6 +532,107 @@ Error from server ([denied by azurepolicy-container-no-privilege-dc2585889397ecb
 
 
 ```
+
+## Enforce threat protection using Azure Defender
+
+See [Defend Azure Arc enabled Kubernetes clusters running in on-premises and multi-cloud environments](https://docs.microsoft.com/en-us/azure/security-center/defender-for-kubernetes-azure-arc?toc=%2Fazure%2Fazure-arc%2Fkubernetes%2Ftoc.json&tabs=k8s-deploy-asc%2Ck8s-verify-asc%2Ck8s-remove-arc)
+
+Limitations	Azure Arc enabled Kubernetes and the Azure Defender extension don't support managed Kubernetes offerings like Google Kubernetes Engine and Elastic Kubernetes Service
+
+```sh
+az k8s-extension create --name microsoft.azuredefender.kubernetes --cluster-type connectedClusters --cluster-name $azure_arc_gke -g $gke_rg_name --extension-type microsoft.azuredefender.kubernetes --config logAnalyticsWorkspaceResourceID=$analytics_workspace_id --config auditLogPath=/var/log/kube-apiserver/audit.log
+
+# verify
+az k8s-extension show --cluster-type connectedClusters --cluster-name $azure_arc_gke -g $gke_rg_name --name microsoft.azuredefender.kubernetes
+
+kubectl get pods -n azuredefender
+
+#test: he expected response is "No resource found".
+# Within 30 minutes, Azure Defender will detect this activity and trigger a security alert.
+kubectl get pods --namespace=asc-alerttest-662jfi039n
+
+```
+
+
+## Deploy Arc enabled Open Service Mesh
+
+See [Azure Arc-enabled Open Service Mesh](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/tutorial-arc-enabled-open-service-mesh)
+
+Following Kubernetes distributions are currently supported
+- AKS Engine
+- Cluster API Azure
+- Google Kubernetes Engine
+- Canonical Kubernetes Distribution
+- Rancher Kubernetes Engine
+- OpenShift Kubernetes Distribution
+- Amazon Elastic Kubernetes Service
+
+Azure Monitor integration with Azure Arc enabled Open Service Mesh is available with limited support.
+
+```sh
+export VERSION=0.8.4
+export $CLUSTER_NAME=<arc-cluster-name>
+export $RESOURCE_GROUP=<resource-group-name>
+
+az k8s-extension create --cluster-name $CLUSTER_NAME --resource-group $RESOURCE_GROUP --cluster-type connectedClusters --extension-type Microsoft.openservicemesh --scope cluster --release-train pilot --name osm --version $VERSION
+
+```
+
+## Deploy an Azure ML model to an Arc connected cluster
+
+See []()
+
+```sh
+
+```
+
+## Create an App Service App on Azure Arc
+
+See the docs :
+- [https://docs.microsoft.com/en-us/azure/app-service/quickstart-arc#3-create-an-app](https://docs.microsoft.com/en-us/azure/app-service/quickstart-arc#3-create-an-app)
+- [https://docs.microsoft.com/en-us/azure/app-service/manage-create-arc-environment#add-azure-cli-extensions](https://docs.microsoft.com/en-us/azure/app-service/manage-create-arc-environment#add-azure-cli-extensions)
+
+### Create and manage custom locations
+```sh
+az extension add --upgrade --yes --name customlocation
+az extension remove --name appservice-kube
+az extension add --yes --source "https://aka.ms/appsvc/appservice_kube-latest-py2.py3-none-any.whl"
+
+```
+## 
+```sh
+
+# create an App.
+az webapp create \
+    --resource-group myResourceGroup \
+    --name <app-name> \
+    --custom-location $customLocationId \
+    --runtime 'NODE|12-lts'
+
+# Deploy a dummy App.
+git clone https://github.com/Azure-Samples/nodejs-docs-hello-world
+cd nodejs-docs-hello-world
+zip -r package.zip .
+az webapp deployment source config-zip --resource-group myResourceGroup --name <app-name> --src package.zip
+
+# Get diagnostic logs using Log Analytics
+let StartTime = ago(72h);
+let EndTime = now();
+AppServiceConsoleLogs_CL
+| where TimeGenerated between (StartTime .. EndTime)
+| where AppName_s =~ "<app-name>"
+
+# Deploy a custom container
+az webapp create 
+    --resource-group myResourceGroup \
+    --name <app-name> \
+    --custom-location $customLocationId \
+    --deployment-container-image-name mcr.microsoft.com/appsvc/node:12-lts
+
+
+```
+
+
 
 ## IoT Edge workloads integration
 
