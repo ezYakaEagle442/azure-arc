@@ -191,18 +191,10 @@ oc get ingresses  --all-namespaces
 
 ### ARO Config
 
+[Pre-req](https://docs.microsoft.com/en-in/azure/azure-arc/kubernetes/quickstart-connect-cluster#prerequisites): If you want to connect a OpenShift cluster to Azure Arc, you need to execute the following command just once on your cluster before running az connectedk8s connect:
+
 ```sh
-
-oc patch configs.imageregistry.operator.openshift.io/cluster --patch '{"spec":{"defaultRoute":true}}' --type=merge
-aro_reg_default_route=$(oc get route default-route -n openshift-image-registry -o json | jq -Mr '.status.ingress[0].host')
-echo "ARO Registry default route : " $aro_reg_default_route
-
-oc policy add-role-to-user registry-viewer <user_name> # To pull images
-oc policy add-role-to-user registry-editor <user_name> # To Push images
-oc login $aro_api_server_url -u $aro_usr -p $aro_pwd
-docker login -u $aro_usr -p $(oc whoami -t) https://image-registry.openshift-image-registry.svc:5000
-docker login -u pinpin@ms.grd -p $token_secret_value $aro_reg_default_route
-
+oc adm policy add-scc-to-user privileged system:serviceaccount:azure-arc:azure-arc-kube-aad-proxy-sa
 ```
 
 
@@ -227,7 +219,7 @@ oc config view --minify
 oc config current-context
 
 # Deploy Azure Arc Agents for Kubernetes using Helm 3, into the azure-arc namespace
-az connectedk8s connect --name $azure_arc_aro -l $location -g $aro_rg_name
+az connectedk8s connect --name $azure_arc_aro --infrastructure azure -l $location -g $aro_rg_name
 oc get crds
 oc get azureclusteridentityrequests.clusterconfig.azure.com -n $azure_arc_ns
 oc describe azureclusteridentityrequests.clusterconfig.azure.com config-agent-identity-request -n $azure_arc_ns
@@ -238,6 +230,8 @@ oc describe connectedclusters.arc.azure.com clustermetadata -n $azure_arc_ns
 # verify
 az connectedk8s list --subscription $subId -o table
 az connectedk8s list -g $aro_rg_name -o table # -c $azure_arc_aro --cluster-type connectedClusters 
+
+az connectedk8s show --name $azure_arc_aro -g $aro_rg_name -o tsv --query connectivityStatus
 
 # -o tsv is MANDATORY to remove quotes
 azure_arc_aro_id=$(az connectedk8s show --name $azure_arc_aro -g $aro_rg_name -o tsv --query id)
@@ -659,6 +653,59 @@ See [https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/deploy-azure-io
 
 ```
 
+## Enforce threat protection using Azure Defender
+
+See [Defend Azure Arc enabled Kubernetes clusters running in on-premises and multi-cloud environments](https://docs.microsoft.com/en-us/azure/security-center/defender-for-kubernetes-azure-arc?toc=%2Fazure%2Fazure-arc%2Fkubernetes%2Ftoc.json&tabs=k8s-deploy-asc%2Ck8s-verify-asc%2Ck8s-remove-arc)
+
+```sh
+az k8s-extension create --name microsoft.azuredefender.kubernetes --cluster-type connectedClusters --cluster-name $azure_arc_aro -g $aro_rg_name --extension-type microsoft.azuredefender.kubernetes --config logAnalyticsWorkspaceResourceID=$analytics_workspace_id --config auditLogPath=/var/log/kube-apiserver/audit.log
+
+# verify
+az k8s-extension show --cluster-type connectedClusters --cluster-name $azure_arc_aro -g $aro_rg_name --name microsoft.azuredefender.kubernetes
+
+kubectl get pods -n azuredefender
+
+#test: he expected response is "No resource found".
+# Within 30 minutes, Azure Defender will detect this activity and trigger a security alert.
+kubectl get pods --namespace=asc-alerttest-662jfi039n
+
+```
+
+## Deploy Arc enabled Open Service Mesh
+
+See [Azure Arc-enabled Open Service Mesh](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/tutorial-arc-enabled-open-service-mesh)
+
+Following Kubernetes distributions are currently supported
+- AKS Engine
+- Cluster API Azure
+- Google Kubernetes Engine
+- Canonical Kubernetes Distribution
+- Rancher Kubernetes Engine
+- OpenShift Kubernetes Distribution
+- Amazon Elastic Kubernetes Service
+
+Azure Monitor integration with Azure Arc enabled Open Service Mesh is available with limited support.
+
+```sh
+export VERSION=0.8.4
+
+cat <<EOF >> deploy/osm_openshift_settings.json
+{
+    "osm.OpenServiceMesh.enablePrivilegedInitContainer": "true"
+}
+EOF
+
+cat deploy/osm_openshift_settings.json
+export SETTINGS_FILE=deploy/osm_openshift_settings.json
+
+az k8s-extension create --cluster-name $azure_arc_aro -g $aro_rg_name --cluster-type connectedClusters --extension-type Microsoft.openservicemesh --scope cluster --release-train pilot --name osm --version $VERSION --configuration-settings-file $SETTINGS_FILE
+
+oc adm policy add-scc-to-user privileged -z <service account name> -n <service account namespace>
+
+```
+
+
+
 ## Troubleshooting
 
 See [Azure Arc doc](https://docs.microsoft.com/en-us/azure/azure-arc/kubernetes/troubleshooting)
@@ -689,8 +736,10 @@ az policy assignment delete --name xxx -g $aro_rg_name
 # az monitor log-analytics workspace delete --workspace-name $analytics_workspace_name -g $aro_rg_name
 
 az k8s-extension delete --name azuremonitor-containers --cluster-type connectedClusters --cluster-name $aro_cluster_name  -g $aro_rg_name
+az k8s-extension delete --cluster-type connectedClusters --cluster-name $azure_arc_aro -g $aro_rg_name --name microsoft.azuredefender.kubernetes --yes
+az k8s-extension delete --cluster-type connectedClusters --cluster-name $azure_arc_aro -g $aro_rg_name --name microsoft.azuredefender.kubernetes --yes
 
 az connectedk8s delete --name $azure_arc_aro -g $aro_rg_name -y
 
-az aro delete --name $aro_cluster_name --resource-group $aro_rg_name -y
+az aro delete --name $aro_cluster_name -g $aro_rg_name -y
 
