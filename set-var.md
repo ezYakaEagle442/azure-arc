@@ -19,7 +19,7 @@ ssh_passphrase="<your secret>"
 ssh_key="${appName}-key" # id_rsa
 
 # Storage account name must be between 3 and 24 characters in length and use numbers and lower-case letters only
-storage_name="stwe""${appName,,}"
+storage_name="st""${appName,,}"
 echo "Storage name:" $storage_name
 
 target_namespace="staging"
@@ -74,8 +74,8 @@ echo "Azure Arc ARO registered Cluster:" $azure_arc_aro
 azure_arc_gke="Azure-Arc-GKE"
 echo "Azure Arc GKE registered Cluster:" $azure_arc_gke 
 
-azure_arc_aws="Azure-Arc-AWS"
-echo "Azure Arc K8S registered Cluster:" $azure_arc_aws 
+azure_arc_eks="Azure-Arc-EKS"
+echo "Azure Arc EKS registered Cluster:" $azure_arc_eks 
 
 azure_arc_minikube="Azure-Arc-MiniKube"
 echo "Azure Arc Minikube registered Cluster:" $azure_arc_minikube 
@@ -86,29 +86,35 @@ echo "Azure Arc KIND registered Cluster:" $azure_arc_kind
 arc_gitops_namespace="gitops"
 echo "GitOps namespace:" $arc_gitops_namespace
 
-arc_config_name_k3s="k3s-config"
+arc_config_name_k3s="k3s-cfg"
 echo "Azure Arc K3S Config :" $arc_config_name_k3s
 
-arc_config_name_gke="gke-config"
+arc_config_name_gke="gke-cfg"
 echo "Azure Arc GKE Config :" $arc_config_name_gke
 
-arc_config_name_aks="aks-config"
+arc_config_name_eks="eks-cfg"
+echo "Azure Arc EKS Config :" $arc_config_name_eks
+
+arc_config_name_aks="aks-cfg"
 echo "Azure Arc AKS Config :" $arc_config_name_aks
 
-arc_config_name_aro="aro-config"
+arc_config_name_aro="aro-cfg"
 echo "Azure Arc ARO Config :" $aro_config_name_aro
 
-arc_operator_instance_name_k3s="k3s-cluster-config"
+arc_operator_instance_name_k3s="k3s-cluster-cfg"
 echo "Azure Arc Operator instance name :" $arc_operator_instance_name_k3s
 
-arc_operator_instance_name_aks="aks-cluster-config"
+arc_operator_instance_name_aks="aks-cluster-cfg"
 echo "Azure Arc Operator instance name for AKS :" $arc_operator_instance_name_aks
 
-arc_operator_instance_name_aro="aro-cluster-config"
+arc_operator_instance_name_aro="aro-cluster-cfg"
 echo "Azure Arc Operator instance name for ARO :" $arc_operator_instance_name_aro
 
-arc_operator_instance_name_gke="gke-cluster-config"
+arc_operator_instance_name_gke="gke-cluster-cfg"
 echo "Azure Arc Operator instance name for GKE :" $arc_operator_instance_name_gke
+
+arc_operator_instance_name_eks="eks-cluster-cfg"
+echo "Azure Arc Operator instance name for EKS :" $arc_operator_instance_name_eks
 
 ```
 
@@ -240,13 +246,54 @@ echo "GKE Zone :" $GKE_ZONE
 ## GCP VM
 ```sh
 GCP_PROJECT="gcp-vm-arc-enabled"
-echo "GCP Project :" $GCP_PROJECT
+echo "GCP server Project :" $GCP_PROJECT
 ```
 
 # GKE cluster for Arc forData
 ```sh
 GKE_DATA_PROJECT="gke-arc-data-enabled"
-echo "GCP Project :" $GKE_DATA_PROJECT
+echo "GCP Data Project :" $GKE_DATA_PROJECT
+
+ADM_PWD=CHANGEIT
+
+```
+
+## AWS
+
+```sh
+
+eks_rg_name="rg-${appName}-eks-${location}" 
+echo "eks RG name:" $eks_rg_name 
+
+AWS_ACCOUNT="youremail@groland.grd"
+echo "AWS account :" $AWS_ACCOUNT
+
+#EKS_PROJECT="eks-arc-enabled"
+#echo "eks Project :" $EKS_PROJECT
+
+# Region eu-west-3 : Europe/Paris
+EKS_REGION="eu-west-3"
+echo "eks Region :" $EKS_REGION
+
+EKS_ZONE="eu-west-3a"
+echo "eks Zone :" $EKS_ZONE
+
+# Zone name   | Zone ID
+# eu-west-3a	euw3-az1
+# eu-west-3b	euw3-az2
+# eu-west-3c	euw3-az3
+
+```
+## AWS VM
+```sh
+AWS_PROJECT="aws-vm-arc-enabled"
+echo "AWS server Project :" $AWS_PROJECT
+```
+
+# eks cluster for Arc forData
+```sh
+EKS_DATA_PROJECT="eks-arc-data-enabled"
+echo "AWS Data Project :" $EKS_DATA_PROJECT
 
 ADM_PWD=CHANGEIT
 
