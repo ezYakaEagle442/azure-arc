@@ -140,7 +140,7 @@ k create namespace $arc_gitops_namespace
 # https://docs.fluxcd.io/en/1.17.1/faq.html#will-flux-delete-resources-when-i-remove-them-from-git
 # Will Flux delete resources when I remove them from git?
 # Flux has an garbage collection feature, enabled by passing the command-line flag --sync-garbage-collection to fluxd
-az k8s-configuration create --name $arc_config_name_gke --cluster-name $azure_arc_eks -g $eks_rg_name --cluster-type connectedClusters \
+az k8s-configuration create --name $arc_config_name_eks --cluster-name $azure_arc_eks -g $eks_rg_name --cluster-type connectedClusters \
   --repository-url $gitops_url \
   --enable-helm-operator true \
   --helm-operator-params '--set helm.versions=v3' \
@@ -151,11 +151,26 @@ az k8s-configuration create --name $arc_config_name_gke --cluster-name $azure_ar
   --scope cluster # namespace
 
 az k8s-configuration list --cluster-name $azure_arc_eks -g $eks_rg_name --cluster-type connectedClusters
-az k8s-configuration show --cluster-name $azure_arc_eks --name $arc_config_name_gke -g $eks_rg_name --cluster-type connectedClusters
+az k8s-configuration show --cluster-name $azure_arc_eks --name $arc_config_name_eks -g $eks_rg_name --cluster-type connectedClusters
 
-repositoryPublicKey=$(az k8s-configuration show --cluster-name $azure_arc_eks --name $arc_config_name_gke -g $eks_rg_name --cluster-type connectedClusters --query 'repositoryPublicKey')
+repositoryPublicKey=$(az k8s-configuration show --cluster-name $azure_arc_eks --name $arc_config_name_eks -g $eks_rg_name --cluster-type connectedClusters --query 'repositoryPublicKey')
 echo "repositoryPublicKey : " $repositoryPublicKey
 echo "Add this Public Key to your GitHub Project Deploy Key and allow write access at https://github.com/$github_usr/arc-k8s-demo/settings/keys"
+
+echo "If you forget to add the GitHub SSH Key, you will see in the GitOps pod the error below : "
+echo "Permission denied (publickey). fatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights nand the repository exists."
+
+# troubleshooting: 
+for pod in $(k get po -L app=helm-operator -n $arc_gitops_namespace -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"=~"^$arc_operator_instance_name_eks*" ]]
+    then
+      echo "Verifying GitOps config Pod $pod"
+      k logs $pod -n $arc_gitops_namespace | grep -i "Error"
+      k logs $pod -n $arc_gitops_namespace | grep -i "Permission denied (publickey)"
+  fi
+done
+
 
 # notices the new Pending configuration
 complianceState=$(az k8s-configuration show --cluster-name $azure_arc_eks --name $arc_config_name_eks -g $eks_rg_name --cluster-type connectedClusters --query 'complianceStatus.complianceState')
@@ -167,7 +182,7 @@ k describe gitconfigs.clusterconfig.azure.com $git_config -n $arc_gitops_namespa
 # https://kubernetes.io/docs/concepts/extend-kubernetes/operator
 # https://github.com/fluxcd/helm-operator/blob/master/chart/helm-operator/CHANGELOG.md#060-2020-01-26
 k get po -L app=helm-operator -n $arc_gitops_namespace
-k describe po gke-cluster-config-helm-gitops-helm-operator-c546b564b-glcf5 -n $arc_gitops_namespace | grep -i "image" # ==> Image: docker.io/fluxcd/helm-operator:1.0.0-rc4
+k describe po eks-cluster-config-helm-gitops-helm-operator-c546b564b-glcf5 -n $arc_gitops_namespace | grep -i "image" # ==> Image: docker.io/fluxcd/helm-operator:1.0.0-rc4
 # https://hub.docker.com/r/fluxcd/helm-operator/tags
 ```
 
@@ -223,7 +238,7 @@ az k8s-configuration create --name "$arc_config_name_eks-azure-voting-app" --clu
   --scope namespace \
   --cluster-type connectedClusters
 
-az k8s-configuration show --resource-group $eks_rg_name --name "$arc_config_name_gke-azure-voting-app" --cluster-name $azure_arc_eks --cluster-type connectedClusters
+az k8s-configuration show --resource-group $eks_rg_name --name "$arc_config_name_eks-azure-voting-app" --cluster-name $azure_arc_eks --cluster-type connectedClusters
 
 # notices the new Pending configuration
 complianceState=$(az k8s-configuration show --cluster-name $azure_arc_eks --name "$arc_config_name_eks-azure-voting-app" -g $eks_rg_name --cluster-type connectedClusters --query 'complianceStatus.complianceState')
@@ -251,12 +266,6 @@ done
 #    Requests:
 #      cpu:  250m
 
-# https://cloud.google.com/kubernetes-engine/docs/troubleshooting#PodUnschedulable
-# https://stackoverflow.com/questions/47269602/how-do-i-avoid-unschedulable-pods-when-running-an-autoscale-enabled-google-conta
-# https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/
-
-# GKE has a default LimitRange with default limits for CPU request set to 100m. GKE has a default LimitRange with default limits for CPU request set to 100m
-# This limit is applied to every container
 k get limitrange -o=yaml -n prod
 
 
@@ -698,7 +707,7 @@ az k8s-extension delete --name azuremonitor-containers --cluster-type connectedC
 az k8s-configuration delete --name "$arc_config_name_eks-azure-voting-app" --cluster-name $azure_arc_eks --cluster-type connectedClusters -g $eks_rg_name -y
 az k8s-configuration delete --name $arc_config_name_eks --cluster-name $azure_arc_eks --cluster-type connectedClusters -g $eks_rg_name -y
 
-az policy definition delete --name "gke-gitops-enforcement" -g $eks_rg_name
+az policy definition delete --name "eks-gitops-enforcement" -g $eks_rg_name
 az policy assignment delete --name xxx -g $eks_rg_name
 
 az connectedk8s delete --name $azure_arc_eks -g $eks_rg_name -y

@@ -230,9 +230,29 @@ az k8s-configuration create --name "$arc_config_name_gke-azure-voting-app" --clu
 
 az k8s-configuration show --resource-group $gke_rg_name --name "$arc_config_name_gke-azure-voting-app" --cluster-name $azure_arc_gke --cluster-type connectedClusters
 
+repositoryPublicKey=$(az k8s-configuration show --cluster-name $azure_arc_gke --name $arc_config_name_gke -g $gke_rg_name --cluster-type connectedClusters --query 'repositoryPublicKey')
+echo "repositoryPublicKey : " $repositoryPublicKey
+echo "Add this Public Key to your GitHub Project Deploy Key and allow write access at https://github.com/$github_usr/arc-k8s-demo/settings/keys"
+
+
 # notices the new Pending configuration
 complianceState=$(az k8s-configuration show --cluster-name $azure_arc_gke --name "$arc_config_name_gke-azure-voting-app" -g $gke_rg_name --cluster-type connectedClusters --query 'complianceStatus.complianceState')
 echo "Compliance State " : $complianceState
+
+echo "If you forget to add the GitHub SSH Key, you will see in the GitOps pod the error below : "
+echo "Permission denied (publickey). fatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights nand the repository exists."
+
+# troubleshooting: 
+for pod in $(k get po -L app=helm-operator -n $arc_gitops_namespace -o=custom-columns=:.metadata.name)
+do
+  if [[ "$pod"=~"^$arc_operator_instance_name_gke*" ]]
+    then
+      echo "Verifying GitOps config Pod $pod"
+      k logs $pod -n $arc_gitops_namespace | grep -i "Error"
+      k logs $pod -n $arc_gitops_namespace | grep -i "Permission denied (publickey)"
+  fi
+done
+
 
 # Verify the App
 k get po -n prod
