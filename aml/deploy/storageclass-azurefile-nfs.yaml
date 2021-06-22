@@ -5,14 +5,19 @@ metadata:
   name: azurefile-csi-nfs
 provisioner: file.csi.azure.com
 parameters:
-  skuName: Premium_LRS
-  resourceGroup: rg-azarc-aro-francecentral
   storageAccount: stfrfileazarc
   shareName: arofs
-  secretName: azure-storage-secret
-  secretNamespace: default
   server: stfrfileazarc.privatelink.file.core.windows.net
   protocol: nfs
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
+mountOptions:
+  - dir_mode=0777
+  - file_mode=0777
+  - uid=0
+  - gid=0
+  - mfsymlinks
+  - cache=strict  # https://linux.die.net/man/8/mount.cifs
+  - nosharesock  # reduce probability of reconnect race
+  - actimeo=30  # reduce latency for metadata-heavy workload

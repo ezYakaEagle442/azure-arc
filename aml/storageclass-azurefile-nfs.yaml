@@ -5,14 +5,20 @@ metadata:
   name: azurefile-csi-nfs
 provisioner: file.csi.azure.com
 parameters:
-  skuName: $SKU_NAME
   resourceGroup: $RESOURCE_GROUP
   storageAccount: $STORAGE_ACCOUNT_NAME
   shareName: $SHARE_NAME
-  secretName: $STORAGE_SECRET_NAME
-  secretNamespace: $STORAGE_SECRET_NAMESPACE
   server: $STORAGE_ACCOUNT_NAME.privatelink.file.core.windows.net
   protocol: nfs
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
+mountOptions:
+  - dir_mode=0777
+  - file_mode=0777
+  - uid=0
+  - gid=0
+  - mfsymlinks
+  - cache=strict  # https://linux.die.net/man/8/mount.cifs
+  - nosharesock  # reduce probability of reconnect race
+  - actimeo=30  # reduce latency for metadata-heavy workload
