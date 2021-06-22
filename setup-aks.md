@@ -649,6 +649,8 @@ k describe k8sazurecontainernoprivilege.constraints.gatekeeper.sh $container_no_
 # https://github.com/Azure/azure-policy/tree/master/built-in-policies/policyDefinitions/Kubernetes%20service
 # https://raw.githubusercontent.com/Azure/azure-policy/master/built-in-references/Kubernetes/container-no-privilege/template.yaml
 # https://github.com/open-policy-agent/gatekeeper/tree/master/library/pod-security-policy/privileged-containers replaced by https://github.com/open-policy-agent/gatekeeper-library/tree/master/library/general
+# https://store.policy.core.windows.net/kubernetes/container-no-privilege/v1/template.yaml
+# https://github.com/open-policy-agent/gatekeeper-library/tree/master/library/pod-security-policy/privileged-containers
 
 # Try to deploy a "bad" Pod
 k apply -f app/root-pod.yaml
