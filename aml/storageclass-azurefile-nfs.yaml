@@ -1,0 +1,18 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: azurefile-csi-nfs
+provisioner: file.csi.azure.com
+parameters:
+  skuName: $SKU_NAME
+  volumeAttributes.resourceGroup: $RESOURCE_GROUP
+  volumeAttributes.storageAccount: $STORAGE_ACCOUNT_NAME
+  volumeAttributes.shareName: $SHARE_NAME
+  nodeStageSecretRef.name: $STORAGE_SECRET_NAME
+  nodeStageSecretRef.namespace: $STORAGE_SECRET_NAMESPACE
+  volumeAttributes.server: $STORAGE_ACCOUNT_NAME.privatelink.file.core.windows.net
+  volumeAttributes.protocol: nfs
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: true

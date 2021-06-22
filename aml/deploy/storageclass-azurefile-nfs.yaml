@@ -1,0 +1,18 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: azurefile-csi-nfs
+provisioner: file.csi.azure.com
+parameters:
+  skuName: Premium_LRS
+  volumeAttributes.resourceGroup: rg-azarc-aro-francecentral
+  volumeAttributes.storageAccount: stfrfileazarc
+  volumeAttributes.shareName: arofs
+  nodeStageSecretRef.name: azure-storage-secret
+  nodeStageSecretRef.namespace: default
+  volumeAttributes.server: stfrfileazarc.privatelink.file.core.windows.net
+  volumeAttributes.protocol: nfs
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: true

@@ -719,6 +719,204 @@ oc adm policy add-scc-to-user privileged -z <service account name> -n <service a
 
 ```
 
+## Deploy an Azure ML model to an Arc connected cluster
+
+See :
+- [Configure Azure Arc enabled Machine Learning](https://docs.microsoft.com/en-us/azure/machine-learning/how-to-attach-arc-kubernetes?toc=/azure/azure-arc/kubernetes/toc.json)
+- [Train using Azure Machine Learning Compute](https://github.com/Azure/MachineLearningNotebooks/blob/master/how-to-use-azureml/training/train-on-amlcompute/train-on-amlcompute.ipynb)
+- [https://github.com/Azure/MachineLearningNotebooks/](https://github.com/Azure/MachineLearningNotebooks/)
+- [https://docs.microsoft.com/en-us/azure/machine-learning/reference-azure-machine-learning-cli](https://docs.microsoft.com/en-us/azure/machine-learning/reference-azure-machine-learning-cli)
+- []()
+
+### CSI-pre-req
+
+Install the CSI Drivers, see :
+- My repo with [Azure Disk](https://github.com/ezYakaEagle442/aro-pub-storage/blob/master/setup-store-CSI-driver-azure-disk.md) [Azure File](https://github.com/ezYakaEagle442/aro-pub-storage/blob/master/setup-store-CSI-driver-azure-file.md) [Azure BLOB](https://github.com/ezYakaEagle442/aro-pub-storage/blob/master/setup-store-CSI-driver-azure-blob.md) CSI drivers
+- [CSI driver for vSphere](https://github.com/kubernetes-sigs/vsphere-csi-driver/tree/master)
+
+```sh
+cat aml/deploy/cloud.conf
+export AZURE_CLOUD_SECRET=`cat aml/deploy/cloud.conf | base64 | awk '{printf $0}'; echo`
+envsubst < ./aml/azure-cloud-provider.yaml > aml/deploy/azure-cloud-provider.yaml
+
+cat aml/deploy/azure-cloud-provider.yaml
+oc apply -f ./aml/deploy/azure-cloud-provider.yaml
+```
+
+### Create Storage Account
+```sh
+
+# Static Provisioning(use an existing azure file share)
+# Create an Azure File
+# Check SKU at https://aka.ms/storageaccounttypes 
+export SKU_NAME="Premium_LRS"
+export RESOURCE_GROUP=$aro_rg_name
+
+str_name="stfrfile""${appName,,}"
+az storage account create --name $str_name --kind FileStorage --sku $SKU_NAME --location $location -g $aro_rg_name \
+--min-tls-version TLS1_2 --https-only=false
+
+az storage account list -g $aro_rg_name
+export AZURE_STORAGE_CONNECTION_STRING=$(az storage account show-connection-string -n $str_name -g $aro_rg_name -o tsv)
+```
+
+### Create Storage Account Private-Endpoint
+
+See [https://docs.microsoft.com/en-us/azure/storage/common/storage-private-endpoints](https://docs.microsoft.com/en-us/azure/storage/common/storage-private-endpoints)
+
+
+```sh
+az network private-dns zone create --name "privatelink.blob.core.windows.net" -g $aro_rg_name
+
+storage_private_dns_link_name="prv-lnk-storage-${appName,,}"
+echo "Storage private-dns link Name :" $storage_private_dns_link_name
+
+storage_private_endpoint_name="prv-ep-str-${appName,,}"
+echo "Storage private-endpoint Name :" $storage_private_endpoint_name
+
+storage_private_endpoint_svc_con_name="prv-ep-str-${appName,,}-svc-con"
+echo "Storage private-endpoint Service Connection :" $storage_private_endpoint_svc_con_name
+
+# Create an association link: 
+# virtual-network is the consumer VNet, so it will be the ARO VNet
+az network private-dns link vnet create \
+  --resource-group $aro_rg_name \
+  --zone-name "privatelink.blob.core.windows.net" \
+  --name $storage_private_dns_link_name \
+  --virtual-network $aro_vnet_name \
+  --registration-enabled false
+
+private_dns_link_id=$(az network private-dns link vnet show --name $storage_private_dns_link_name --zone-name "privatelink.blob.core.windows.net" -g $aro_rg_name --query "id" --output tsv)
+echo "Private-Link DNS ID :" $private_dns_link_id
+
+str_acc_id=$(az storage account show --name $str_name --resource-group $aro_rg_name --query "id" --output tsv)
+echo "Storage Account ID :" $str_acc_id
+
+groupId=$(az network private-link-resource list --type Microsoft.Storage/storageAccounts --name $str_name -g $aro_rg_name --query [0].properties.groupId)
+groupId=`sed -e 's/^"//' -e 's/"$//' <<<"$groupId"`
+
+# The private-endpoint must be created in the Consumer VNet/Subnet, so it will be the ARO Workers $aro_worker_subnet_id
+az network private-endpoint create \
+    --name $storage_private_endpoint_name \
+    --resource-group $aro_rg_name \
+    --subnet $aro_worker_subnet_id \
+    --private-connection-resource-id $str_acc_id \
+    --group-id $groupId \
+    --location $location \
+    --connection-name $storage_private_endpoint_svc_con_name
+
+storage_private_endpoint_id=$(az network private-endpoint show --name $storage_private_endpoint_name -g $aro_rg_name --query id -o tsv)
+echo "Storage private-endpoint ID :" $storage_private_endpoint_id
+
+network_interface_id=$(az network private-endpoint show --name $storage_private_endpoint_name -g $aro_rg_name --query 'networkInterfaces[0].id' -o tsv)
+echo "Storage Network Interface ID :" $network_interface_id
+
+storage_network_interface_private_ip=$(az resource show --ids $network_interface_id \
+  --api-version 2019-04-01 --query 'properties.ipConfigurations[0].properties.privateIPAddress' --output tsv)
+echo "Storage Network Interface private IP :" $storage_network_interface_private_ip
+
+# az storage account network-rule add --account-name $str_name -g $aro_rg_name --subnet $aro_worker_subnet_id #--vnet-name $aro_vnet_name 
+
+```
+
+```sh
+
+fs_share_name=arofs
+az storage share create --name $fs_share_name --account-name $str_name
+az storage share list --account-name $str_name
+az storage share show --name $fs_share_name --account-name $str_name
+
+# https://docs.microsoft.com/en-us/azure/storage/files/storage-how-to-use-files-linux
+httpEndpoint=$(az storage account show --name $str_name -g $aro_rg_name --query "primaryEndpoints.file" | tr -d '"')
+nfsPath=$(echo $httpEndpoint | cut -c7-$(expr length $httpEndpoint))$fs_share_name
+storageAccountKey=$(az storage account keys list --account-name $str_name -g $aro_rg_name --query "[0].value" | tr -d '"')
+
+echo "httpEndpoint" $httpEndpoint 
+echo "nfsPath" $nfsPath 
+echo "storageAccountKey" $storageAccountKey 
+
+export STORAGE_SECRET_NAMESPACE=default
+export STORAGE_ACCOUNT_NAME=$str_name
+export SHARE_NAME=$fs_share_name
+
+oc create secret generic azure-secret \
+--from-literal=azurestorageaccountname=$str_name --from-literal=azurestorageaccountkey=$storageAccountKey
+
+envsubst < ./aml/storageclass-azurefile-nfs.yaml > aml/deploy/storageclass-azurefile-nfs.yaml
+cat aml/deploy/storageclass-azurefile-nfs.yaml
+```
+
+### Install Storage Class
+```sh
+
+oc create -f aml/deploy/storageclass-azurefile-nfs.yaml
+oc get sc,pvc
+```
+
+### NFS Test
+
+```sh
+# Example: Create a deployment with NFS volume
+oc create -f https://raw.githubusercontent.com/kubernetes-sigs/azurefile-csi-driver/master/deploy/example/nfs/statefulset.yaml
+oc get sts
+oc describe sts statefulset-azurefile
+oc get po
+oc describe po statefulset-azurefile-0
+oc get pvc
+oc describe pvc persistent-storage-statefulset-azurefile-0
+
+oc exec -it statefulset-azurefile-0 -- df -h
+
+```
+
+## Create an App Service App on Azure Arc
+
+See the docs :
+- [https://docs.microsoft.com/en-us/azure/app-service/quickstart-arc#3-create-an-app](https://docs.microsoft.com/en-us/azure/app-service/quickstart-arc#3-create-an-app)
+- [https://docs.microsoft.com/en-us/azure/app-service/manage-create-arc-environment#add-azure-cli-extensions](https://docs.microsoft.com/en-us/azure/app-service/manage-create-arc-environment#add-azure-cli-extensions)
+
+### Create and manage custom locations
+```sh
+az extension add --upgrade --yes --name customlocation
+az extension remove --name appservice-kube
+az extension add --yes --source "https://aka.ms/appsvc/appservice_kube-latest-py2.py3-none-any.whl"
+
+```
+## 
+```sh
+
+# https://github.com/Azure/actions-workflow-samples/blob/master/assets/create-secrets-for-GitHub-workflows.md
+az ad sp create-for-rbac --name $appName-appsvc --role "contributor" --scopes "/subscriptions/${subId}/resourceGroups/${gke_rg_name}"
+
+# create an App.
+az webapp create \
+    --resource-group myResourceGroup \
+    --name <app-name> \
+    --custom-location $customLocationId \
+    --runtime 'NODE|12-lts'
+
+# Deploy a dummy App.
+git clone https://github.com/Azure-Samples/nodejs-docs-hello-world
+cd nodejs-docs-hello-world
+zip -r package.zip .
+az webapp deployment source config-zip --resource-group myResourceGroup --name <app-name> --src package.zip
+
+# Get diagnostic logs using Log Analytics
+let StartTime = ago(72h);
+let EndTime = now();
+AppServiceConsoleLogs_CL
+| where TimeGenerated between (StartTime .. EndTime)
+| where AppName_s =~ "<app-name>"
+
+# Deploy a custom container
+az webapp create 
+    --resource-group myResourceGroup \
+    --name <app-name> \
+    --custom-location $customLocationId \
+    --deployment-container-image-name mcr.microsoft.com/appsvc/node:12-lts
+
+
+```
 
 
 ## Troubleshooting
