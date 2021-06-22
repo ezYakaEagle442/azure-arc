@@ -848,6 +848,8 @@ cat aml/deploy/storageclass-azurefile-nfs.yaml
 
 ### Install Storage Class
 ```sh
+#  configure ARO SPN to access that storage account
+az role assignment create --assignee $aadClientId --scope $str_acc_id  --role Contributor
 
 oc create -f aml/deploy/storageclass-azurefile-nfs.yaml
 oc get sc,pvc
