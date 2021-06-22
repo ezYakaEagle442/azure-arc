@@ -6,13 +6,13 @@ metadata:
 provisioner: file.csi.azure.com
 parameters:
   skuName: Premium_LRS
-  volumeAttributes.resourceGroup: rg-azarc-aro-francecentral
-  volumeAttributes.storageAccount: stfrfileazarc
-  volumeAttributes.shareName: arofs
-  nodeStageSecretRef.name: azure-storage-secret
-  nodeStageSecretRef.namespace: default
-  volumeAttributes.server: stfrfileazarc.privatelink.file.core.windows.net
-  volumeAttributes.protocol: nfs
+  resourceGroup: rg-azarc-aro-francecentral
+  storageAccount: stfrfileazarc
+  shareName: arofs
+  secretName: azure-storage-secret
+  secretNamespace: default
+  server: stfrfileazarc.privatelink.file.core.windows.net
+  protocol: nfs
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true

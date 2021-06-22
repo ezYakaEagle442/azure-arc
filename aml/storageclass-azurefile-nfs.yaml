@@ -6,13 +6,13 @@ metadata:
 provisioner: file.csi.azure.com
 parameters:
   skuName: $SKU_NAME
-  volumeAttributes.resourceGroup: $RESOURCE_GROUP
-  volumeAttributes.storageAccount: $STORAGE_ACCOUNT_NAME
-  volumeAttributes.shareName: $SHARE_NAME
-  nodeStageSecretRef.name: $STORAGE_SECRET_NAME
-  nodeStageSecretRef.namespace: $STORAGE_SECRET_NAMESPACE
-  volumeAttributes.server: $STORAGE_ACCOUNT_NAME.privatelink.file.core.windows.net
-  volumeAttributes.protocol: nfs
+  resourceGroup: $RESOURCE_GROUP
+  storageAccount: $STORAGE_ACCOUNT_NAME
+  shareName: $SHARE_NAME
+  secretName: $STORAGE_SECRET_NAME
+  secretNamespace: $STORAGE_SECRET_NAMESPACE
+  server: $STORAGE_ACCOUNT_NAME.privatelink.file.core.windows.net
+  protocol: nfs
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
