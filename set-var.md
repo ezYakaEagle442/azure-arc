@@ -268,8 +268,8 @@ echo "eks RG name:" $eks_rg_name
 AWS_ACCOUNT="youremail@groland.grd"
 echo "AWS account :" $AWS_ACCOUNT
 
-#EKS_PROJECT="eks-arc-enabled"
-#echo "eks Project :" $EKS_PROJECT
+EKS_PROJECT="eks-arc-enabled"
+echo "eks Project :" $EKS_PROJECT
 
 # Region eu-west-3 : Europe/Paris
 EKS_REGION="eu-west-3"
