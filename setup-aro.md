@@ -735,12 +735,37 @@ Install the CSI Drivers, see :
 - [CSI driver for vSphere](https://github.com/kubernetes-sigs/vsphere-csi-driver/tree/master)
 
 ```sh
+# "vnetResourceGroup": "$aro_rg_name",
+#/!\ IMPORTANT : the resourceGroup is the ARO Cluster RG
+
+cat <<EOF >> aml/deploy/cloud.conf
+{
+"tenantId": "$tenantId",
+"subscriptionId": $subId,
+"resourceGroup" : "$aro_rg_name", 
+"vnetResourceGroup": "$aro_rg_name",
+"vnetName": "$aro_vnet_name",
+"subnetName": "$aro_worker_subnet_name",
+"useManagedIdentityExtension": false,
+"aadClientId": "$aadClientId",
+"aadClientSecret": "$aadClientSecret"
+}
+EOF
+
 cat aml/deploy/cloud.conf
 export AZURE_CLOUD_SECRET=`cat aml/deploy/cloud.conf | base64 | awk '{printf $0}'; echo`
 envsubst < ./aml/azure-cloud-provider.yaml > aml/deploy/azure-cloud-provider.yaml
 
 cat aml/deploy/azure-cloud-provider.yaml
 oc apply -f ./aml/deploy/azure-cloud-provider.yaml
+
+# https://github.com/kubernetes-sigs/azurefile-csi-driver/blob/master/deploy/csi-azurefile-node.yaml#L17
+
+
+driver_version=master #v1.5.0
+curl -skSL https://raw.githubusercontent.com/kubernetes-sigs/azurefile-csi-driver/$driver_version/deploy/install-driver.sh | bash -s $driver_version --
+
+
 ```
 
 ### Create Storage Account
@@ -757,7 +782,6 @@ az storage account create --name $str_name --kind FileStorage --sku $SKU_NAME --
 --min-tls-version TLS1_2 --https-only=false
 
 az storage account list -g $aro_rg_name
-export AZURE_STORAGE_CONNECTION_STRING=$(az storage account show-connection-string -n $str_name -g $aro_rg_name -o tsv)
 ```
 
 ### Create Storage Account Private-Endpoint
@@ -820,27 +844,29 @@ echo "Storage Network Interface private IP :" $storage_network_interface_private
 ```
 
 ```sh
-
-fs_share_name=arofs
-az storage share create --name $fs_share_name --account-name $str_name
-az storage share list --account-name $str_name
-az storage share show --name $fs_share_name --account-name $str_name
+export AZURE_STORAGE_CONNECTION_STRING=$(az storage account show-connection-string -n $str_name -g $aro_rg_name -o tsv)
 
 # https://docs.microsoft.com/en-us/azure/storage/files/storage-how-to-use-files-linux
 httpEndpoint=$(az storage account show --name $str_name -g $aro_rg_name --query "primaryEndpoints.file" | tr -d '"')
-nfsPath=$(echo $httpEndpoint | cut -c7-$(expr length $httpEndpoint))$fs_share_name
-storageAccountKey=$(az storage account keys list --account-name $str_name -g $aro_rg_name --query "[0].value" | tr -d '"')
+smbPath=$(echo $httpEndpoint | cut -c7-$(expr length $httpEndpoint))$fs_share_name
+export AZURE_STORAGE_KEY=$(az storage account keys list --account-name $str_name -g $aro_rg_name --query "[0].value" | tr -d '"')
 
+echo "AZURE_STORAGE_CONNECTION_STRING" $AZURE_STORAGE_CONNECTION_STRING
 echo "httpEndpoint" $httpEndpoint 
-echo "nfsPath" $nfsPath 
-echo "storageAccountKey" $storageAccountKey 
+echo "smbPath" $smbPath 
+echo "storageAccountKey" $AZURE_STORAGE_KEY 
+
+fs_share_name=arofs
+az storage share create --name $fs_share_name --account-name $str_name --quota 100 
+az storage share list --account-name $str_name
+az storage share show --name $fs_share_name --account-name $str_name
 
 export STORAGE_SECRET_NAMESPACE=default
 export STORAGE_ACCOUNT_NAME=$str_name
 export SHARE_NAME=$fs_share_name
 
-oc create secret generic azure-secret \
---from-literal=azurestorageaccountname=$str_name --from-literal=azurestorageaccountkey=$storageAccountKey
+# oc create secret generic azure-secret \
+# --from-literal=azurestorageaccountname=$str_name --from-literal=azurestorageaccountkey=$storageAccountKey
 
 envsubst < ./aml/storageclass-azurefile-nfs.yaml > aml/deploy/storageclass-azurefile-nfs.yaml
 cat aml/deploy/storageclass-azurefile-nfs.yaml
@@ -849,6 +875,7 @@ cat aml/deploy/storageclass-azurefile-nfs.yaml
 ### Install Storage Class
 ```sh
 #  configure ARO SPN to access that storage account
+# Role to be tested : Reader, Storage File Data SMB Share Reader, Storage Account Contributor
 az role assignment create --assignee $aadClientId --scope $str_acc_id  --role Contributor
 
 oc create -f aml/deploy/storageclass-azurefile-nfs.yaml
