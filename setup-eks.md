@@ -368,7 +368,7 @@ echo "analytics_workspace_id:" $analytics_workspace_id
 
 k config view --minify
 k config get-contexts
-export kubeContext="eks_"$EKS_PROJECT"_"$EKS_ZONE"_"$EKS_PROJECT #"<kubeContext name of your k8s cluster>"
+export kubeContext="$AWS_ACCOUNT@"$EKS_PROJECT"."$EKS_REGION".eksctl.io" #"<kubeContext name of your k8s cluster>"
 
 # curl -o enable-monitoring.sh -L https://aka.ms/enable-monitoring-bash-script
 # bash enable-monitoring.sh --resource-id $azure_arc_eks_id --workspace-id $analytics_workspace_id --kube-context $kubeContext
