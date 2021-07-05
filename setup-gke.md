@@ -622,6 +622,10 @@ az extension add --yes --source "https://aka.ms/appsvc/appservice_kube-latest-py
 ## 
 ```sh
 
+# https://github.com/Azure/actions-workflow-samples/blob/master/assets/create-secrets-for-GitHub-workflows.md
+az ad sp create-for-rbac --name $appName-appsvc --role "contributor" --scopes "/subscriptions/${subId}/resourceGroups/${gke_rg_name}" --query password --output tsv
+
+
 # create an App.
 az webapp create \
     --resource-group myResourceGroup \
