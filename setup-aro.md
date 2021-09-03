@@ -736,13 +736,13 @@ Install the CSI Drivers, see :
 
 ```sh
 # "vnetResourceGroup": "$aro_rg_name",
-#/!\ IMPORTANT : the resourceGroup is the ARO Cluster RG
+#/!\ IMPORTANT : the resourceGroup is the ARO Cluster MANAGED RG
 
 cat <<EOF >> aml/deploy/cloud.conf
 {
 "tenantId": "$tenantId",
 "subscriptionId": $subId,
-"resourceGroup" : "$aro_rg_name", 
+"resourceGroup" : "$aro_managed_rg_name", 
 "vnetResourceGroup": "$aro_rg_name",
 "vnetName": "$aro_vnet_name",
 "subnetName": "$aro_worker_subnet_name",
@@ -790,7 +790,9 @@ See [https://docs.microsoft.com/en-us/azure/storage/common/storage-private-endpo
 
 
 ```sh
-az network private-dns zone create --name "privatelink.blob.core.windows.net" -g $aro_rg_name
+FILE_PRIVATE_DNS_ZONE="privatelink.file.core.windows.net" # "file.core.windows.net"
+
+az network private-dns zone create --name $FILE_PRIVATE_DNS_ZONE -g $aro_rg_name
 
 storage_private_dns_link_name="prv-lnk-storage-${appName,,}"
 echo "Storage private-dns link Name :" $storage_private_dns_link_name
@@ -805,12 +807,12 @@ echo "Storage private-endpoint Service Connection :" $storage_private_endpoint_s
 # virtual-network is the consumer VNet, so it will be the ARO VNet
 az network private-dns link vnet create \
   --resource-group $aro_rg_name \
-  --zone-name "privatelink.blob.core.windows.net" \
+  --zone-name $FILE_PRIVATE_DNS_ZONE \
   --name $storage_private_dns_link_name \
   --virtual-network $aro_vnet_name \
   --registration-enabled false
 
-private_dns_link_id=$(az network private-dns link vnet show --name $storage_private_dns_link_name --zone-name "privatelink.blob.core.windows.net" -g $aro_rg_name --query "id" --output tsv)
+private_dns_link_id=$(az network private-dns link vnet show --name $storage_private_dns_link_name --zone-name $FILE_PRIVATE_DNS_ZONE -g $aro_rg_name --query "id" --output tsv)
 echo "Private-Link DNS ID :" $private_dns_link_id
 
 str_acc_id=$(az storage account show --name $str_name --resource-group $aro_rg_name --query "id" --output tsv)
@@ -818,6 +820,7 @@ echo "Storage Account ID :" $str_acc_id
 
 groupId=$(az network private-link-resource list --type Microsoft.Storage/storageAccounts --name $str_name -g $aro_rg_name --query [0].properties.groupId)
 groupId=`sed -e 's/^"//' -e 's/"$//' <<<"$groupId"`
+
 
 # The private-endpoint must be created in the Consumer VNet/Subnet, so it will be the ARO Workers $aro_worker_subnet_id
 az network private-endpoint create \
@@ -840,6 +843,35 @@ storage_network_interface_private_ip=$(az resource show --ids $network_interface
 echo "Storage Network Interface private IP :" $storage_network_interface_private_ip
 
 # az storage account network-rule add --account-name $str_name -g $aro_rg_name --subnet $aro_worker_subnet_id #--vnet-name $aro_vnet_name 
+
+# Add DNS records
+az network private-dns record-set a create --name $str_name --zone-name $FILE_PRIVATE_DNS_ZONE -g $aro_rg_name
+
+az network private-dns record-set a add-record -g $aro_rg_name \
+  --record-set-name $str_name \
+  --zone-name $FILE_PRIVATE_DNS_ZONE \
+  --ipv4-address $storage_network_interface_private_ip
+
+
+# Validate private link connection
+# From home/public network, you wil get a public IP. 
+# If inside a vnet with private zone, then nslookup will resolve to the private ip.
+nslookup $str_name.file.core.windows.net
+
+
+export DNS_RECORD=$str_name.$FILE_PRIVATE_DNS_ZONE
+envsubst < ./aml/private-endpoint-test-pod.yaml > aml/deploy/private-endpoint-test-pod.yaml
+cat ./aml/deploy/private-endpoint-test-pod.yaml
+
+oc apply -f ./aml/deploy/private-endpoint-test-pod.yaml
+
+oc describe pvc test-host-pvc
+oc describe pv test-host-pv
+oc describe pod test-pod
+oc get po
+oc logs test-pod
+
+oc exec -it test-pod -- nslookup $DNS_RECORD
 
 ```
 
