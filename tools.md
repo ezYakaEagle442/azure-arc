@@ -424,6 +424,21 @@ see :
 az -v
 
 ```
+
+## Install Azure Bicep CLI
+
+see :
+- [https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/install#azure-cli](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/install#azure-cli)
+
+```sh
+az -v
+az bicep install
+az bicep upgrade
+az bicep version
+az bicep --help
+```
+
+
 ## How to install HELM from RedHat
 
 See [https://docs.openshift.com/aro/4/cli_reference/helm_cli/getting-started-with-helm-on-openshift-container-platform.html](https://docs.openshift.com/aro/4/cli_reference/helm_cli/getting-started-with-helm-on-openshift-container-platform.html)
