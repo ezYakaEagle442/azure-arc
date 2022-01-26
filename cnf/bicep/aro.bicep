@@ -6,7 +6,7 @@ param clientSecret string
 param pullSecret string
 param clusterName string
 
-param podCidr string = '=10.51.0.0/18'
+param podCidr string = '10.51.0.0/18'
 param serviceCidr string = '10.52.0.0/18'
 param apiServerVisibility string = 'Public'
 param ingressVisibility string = 'Public'
