@@ -287,10 +287,6 @@ k get svc/azure-vote-front -n prod -o yaml
 k describe svc/azure-vote-front -n prod
 
 
-# https://cloud.google.com/kubernetes-engine/docs/how-to/exposing-apps#creating_a_service_of_type_nodeport
-# azure_vote_front_port=$(k get svc/azure-vote-front -n prod -o jsonpath="{.spec.ports[0].nodePort}")
-# gcloud compute firewall-rules create test-node-port --allow tcp:node-port
-
 azure_vote_front_url=$(k get svc/azure-vote-front -n prod -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
 
 # Find the external IP address from the output above and open it in a browser.
@@ -712,7 +708,12 @@ az policy assignment delete --name xxx -g $eks_rg_name
 
 az connectedk8s delete --name $azure_arc_eks -g $eks_rg_name -y
 
-gcloud container clusters delete $EKS_PROJECT --project $EKS_PROJECT_ID --zone=$EKS_ZONE -Y # --node-locations=$EKS_ZONE 
-gcloud projects delete $EKS_PROJECT_ID --name $EKS_PROJECT --verbosity=info -Y
+aws resource-groups delete-group --group-name rg-arc-eks
+eksctl delete cluster -n  $azure_arc_eks --region $EKS_REGION --force
+
+#TODO : delete AWS auto-scaling group + EC2 VM
+# https://docs.aws.amazon.com/cli/latest/reference/autoscaling/delete-auto-scaling-group.html
+
+aws delete delete-auto-scaling-group --auto-scaling-group-name <value> --force-delete
 
 ```
