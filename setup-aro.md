@@ -19,11 +19,6 @@ az provider show -n Microsoft.KubernetesConfiguration -o table
 az provider show -n Microsoft.ExtendedLocation -o table
 ```
 
-# Setup ARO
-
-Pre-req: ensure you have installed the [ARO CLI extension](./tools#install-the-az-aro-extension)
-
-
 ## Create ARO Service Principal
 
 
@@ -38,9 +33,9 @@ aro_sp_password=$(az ad sp create-for-rbac --name $appName-aro --role contributo
 echo $aro_sp_password > aro_spp.txt
 echo "Service Principal Password saved to ./aro_spp.txt IMPORTANT Keep your password ..." 
 # aro_sp_password=`cat aro_spp.txt`
-aro_sp_id=$(az ad sp show --id http://$appName-aro --query appId -o tsv)
+#aro_sp_id=$(az ad sp show --id http://$appName-aro --query appId -o tsv) # | jq -r .appId
 #aro_sp_id=$(az ad sp list --all --query "[?appDisplayName=='${appName}-aro'].{appId:appId}" --output tsv)
-#aro_sp_id=$(az ad sp list --show-mine --query "[?appDisplayName=='${appName}-aro'].{appId:appId}" -o tsv)
+aro_sp_id=$(az ad sp list --show-mine --query "[?appDisplayName=='${appName}-aro'].{appId:appId}" -o tsv)
 echo "Service Principal ID:" $aro_sp_id 
 echo $aro_sp_id > aro_spid.txt
 # aro_sp_id=`cat aro_spid.txt`
@@ -51,14 +46,34 @@ az ad sp show --id $aro_sp_id
 #     --assignee $aro_sp_id \
 #    --scope /subscriptions/$subId
 
+aroRpObjectId="$(az ad sp list --filter "displayname eq 'Azure Red Hat OpenShift RP'" --query "[?appDisplayName=='Azure Red Hat OpenShift RP'].objectId" -o tsv)"
+
+pull_secret=`cat pull-secret.txt`
+
+az deployment group create \
+    -f ./cnf/bicep//main.bicep \
+    -g $aro_rg_name \
+    --parameters clientId=$aro_sp_id \
+        clientObjectId=$clientObjectId \
+        clientSecret=$aro_sp_password \
+        aroRpObjectId=$aroRpObjectId \
+        domain=$domain \
+        pullSecret=$pull_secret
 ```
+
+# Setup ARO
+
+Pre-req: ensure you have installed the [ARO CLI extension](./tools#install-the-az-aro-extension)
+
+
+
 
 ```sh
 
 pull_secret=`cat pull-secret.txt`
 
 az provider show -n  Microsoft.RedHatOpenShift --query  "resourceTypes[?resourceType == 'OpenShiftClusters']".locations 
-curl -sSL aka.ms/where/aro | bash
+# curl -sSL aka.ms/where/aro | bash
 
 az aro create \
   --name $aro_cluster_name \
@@ -930,6 +945,69 @@ oc exec -it statefulset-azurefile-0 -- df -h
 
 ```
 
+
+### AML-pre-req
+Deploy Azure Machine Learning extension.
+
+See [Latests docs on GitHub](https://github.com/Azure/AML-Kubernetes/blob/master/docs/deploy-on-ocp.md)
+ 
+```sh
+
+AML_K8S_EXTENSION_NAME="amlarc-compute"
+
+oc edit scc privileged
+# add following service accounts under users:
+- system:serviceaccount:azure-arc:azure-arc-kube-aad-proxy-sa
+- system:serviceaccount:azureml:$AML_K8S_EXTENSION_NAME-kube-state-metrics #replace with amlarc-compute in the oc edit command
+- system:serviceaccount:azureml:cluster-status-reporter
+- system:serviceaccount:azureml:prom-admission
+- system:serviceaccount:azureml:default
+- system:serviceaccount:azureml:prom-operator
+- system:serviceaccount:azureml:csi-blob-node-sa
+- system:serviceaccount:azureml:csi-blob-controller-sa
+- system:serviceaccount:azureml:load-amlarc-selinux-policy-sa
+- system:serviceaccount:azureml:azureml-fe
+- system:serviceaccount:azureml:prom-prometheus
+```
+
+```sh
+# The extension install should take around 10 minutes
+az k8s-extension create --name $AML_K8S_EXTENSION_NAME --extension-type Microsoft.AzureML.Kubernetes \
+--cluster-name $azure_arc_aro \
+--resource-group $aro_rg_name \
+--configuration-settings enableTraining=True enableInference=True openshift=True \
+privateEndpointILB=True allowInsecureConnections=false \ 
+--configuration-protected-settings sslCertPemFile=<path-to-the-SSL-cert-PEM-ile> sslKeyPemFile=<path-to-the-SSL-key-PEM-file>  
+--cluster-type connectedClusters \
+--scope cluster \
+--debug
+
+
+aml_extension_state=$(az k8s-extension show --name $AML_K8S_EXTENSION_NAME --cluster-name $azure_arc_aro --resource-group  $aro_rg_name --cluster-type connectedClusters  --query installState)
+
+echo "aml_extension_state": $aml_extension_state
+oc get pods -n azureml
+
+
+az extension add --name ml
+
+# Create Azure Machine Learning workspaces
+# https://docs.microsoft.com/en-us/cli/azure/ml/workspace?view=azure-cli-latest#az_ml_workspace_create
+# https://docs.microsoft.com/en-us/azure/machine-learning/how-to-manage-workspace?tabs=python#create-a-workspace
+AML_WORKSPACE_NAME="arc-aro-aml-workspace"
+az ml workspace create --workspace-name $AML_WORKSPACE_NAME--resource-group $aro_rg_name --location $location                     [
+
+```
+Attaching an Azure Arc enabled Kubernetes cluster makes it available to your workspace for training.
+- Navigate to [Azure Machine Learning studio.](https://ml.azure.com)
+- Under Manage, select Compute.
+- Select the Attached computes tab.
+- Select +New > Kubernetes (preview)
+
+
+### xxx
+
+
 ## Create an App Service App on Azure Arc
 
 See the docs :
@@ -1013,7 +1091,13 @@ az k8s-extension delete --name azuremonitor-containers --cluster-type connectedC
 az k8s-extension delete --cluster-type connectedClusters --cluster-name $azure_arc_aro -g $aro_rg_name --name microsoft.azuredefender.kubernetes --yes
 az k8s-extension delete --cluster-type connectedClusters --cluster-name $azure_arc_aro -g $aro_rg_name --name microsoft.azuredefender.kubernetes --yes
 
-az connectedk8s delete --name $azure_arc_aro -g $aro_rg_name -y
+az k8s-extension delete --name $AML_K8S_EXTENSION_NAME --extension-type Microsoft.AzureML.Kubernetes  --cluster-name $azure_arc_aro -g $aro_rg_name --cluster-type connectedClusters -y
+
+az connectedk8s delete --name $azure_arc_aro -g $aro_rg_name --subscription $subId -y
+az resource delete --ids $azure_arc_aro_id
+
+az ml workspace delete --workspace-name $AML_WORKSPACE_NAME --resource-group $aro_rg_name -y
+
 
 az aro delete --name $aro_cluster_name -g $aro_rg_name -y
 
