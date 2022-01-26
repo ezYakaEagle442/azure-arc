@@ -46,6 +46,8 @@ az ad sp show --id $aro_sp_id
 #     --assignee $aro_sp_id \
 #    --scope /subscriptions/$subId
 
+clientObjectId="$(az ad sp list --filter "AppId eq '$aro_sp_id'" --query "[?appId=='$aro_sp_id'].objectId" -o tsv)"
+
 aroRpObjectId="$(az ad sp list --filter "displayname eq 'Azure Red Hat OpenShift RP'" --query "[?appDisplayName=='Azure Red Hat OpenShift RP'].objectId" -o tsv)"
 
 pull_secret=`cat pull-secret.txt`
@@ -57,8 +59,8 @@ az deployment group create \
         clientObjectId=$clientObjectId \
         clientSecret=$aro_sp_password \
         aroRpObjectId=$aroRpObjectId \
-        domain=$domain \
-        pullSecret=$pull_secret
+        pullSecret=$pull_secret \
+        domain=gbbappinno
 ```
 
 # Setup ARO
