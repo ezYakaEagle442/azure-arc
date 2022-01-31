@@ -68,7 +68,9 @@ resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
     agentPoolProfiles: [
       {
         availabilityZones: [
-          '1,2,3'
+          '1'
+          '2'
+          '3'
         ]        
         name: 'agentpool'
         osDiskSizeGB: osDiskSizeGB
