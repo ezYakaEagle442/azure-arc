@@ -29,7 +29,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
   */
   properties: {
     adminUserEnabled: false
-    dataEndpointEnabled: true
+    dataEndpointEnabled: false // data endpoint rule is not supported for the SKU Basic
     /*
     networkRuleSet: {
       defaultAction: 'Deny'
