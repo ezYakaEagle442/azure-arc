@@ -53,7 +53,7 @@ aroRpObjectId="$(az ad sp list --filter "displayname eq 'Azure Red Hat OpenShift
 pull_secret=`cat pull-secret.txt`
 
 az deployment group create \
-    -f ./cnf/bicep//main.bicep \
+    -f ./cnf/bicep/aro/main.bicep \
     -g $aro_rg_name \
     --parameters clientId=$aro_sp_id \
         clientObjectId=$clientObjectId \
