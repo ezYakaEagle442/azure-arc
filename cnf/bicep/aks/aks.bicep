@@ -128,5 +128,5 @@ resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
 }
 
 output controlPlaneFQDN string = aks.properties.fqdn
-output managedIdentityPrincipalId string = aks.identity.principalId
+// output managedIdentityPrincipalId string = aks.identity.principalId
 
