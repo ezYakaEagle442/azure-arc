@@ -38,6 +38,7 @@ resource cluster 'Microsoft.RedHatOpenShift/openShiftClusters@2020-04-30' = {
       domain: domain
       resourceGroupId: nodeRgId
       pullSecret: pullSecret
+      // version: 'string'
     }
     apiserverProfile: {
       visibility: apiServerVisibility
