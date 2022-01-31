@@ -47,4 +47,4 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
 }
 
 output acrId string = acr.id
-output acrIdentity string = acr.identity.principalId
+// output acrIdentity string = acr.identity.principalId
