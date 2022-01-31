@@ -30,12 +30,12 @@ param identity object
 @description('The Log Analytics workspace used by the OMS agent in the AKS Cluster')
 param logAnalyticsWorkspaceId string 
 
-/*
+
 @description('The number of nodes for the cluster.')
 @minValue(1)
 @maxValue(12)
 param agentCount int = 3
-*/
+
 
 @description('The size of the Virtual Machine.')
 param agentVMSize string = 'Standard_D2s_v3'
@@ -73,7 +73,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
         name: 'agentpool'
         osDiskSizeGB: osDiskSizeGB
         enableAutoScaling: true
-        // count: agentCount
+        count: agentCount
         minCount: 1        
         maxCount: 3
         maxPods: 30
