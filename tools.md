@@ -181,6 +181,20 @@ unzip terraform.zip
 sudo mv terraform /usr/local/bin
 rm terraform.zip
 terraform version
+```
+
+[https://registry.terraform.io/providers/hashicorp/azuread/latest/docs/guides/service_principal_client_secret](https://registry.terraform.io/providers/hashicorp/azuread/latest/docs/guides/service_principal_client_secret)
+
+```console
+# sh
+$ export ARM_CLIENT_ID="00000000-0000-0000-0000-000000000000"
+$ export ARM_CLIENT_SECRET="MyCl1eNtSeCr3t"
+$ export ARM_TENANT_ID="10000000-2000-3000-4000-500000000000"
+```
+running either terraform plan or terraform apply should allow Terraform to authenticate using the Client Secret.
+
+Next you should follow the Configuring a Service Principal for managing Azure Active Directory guide to grant the Service Principal necessary permissions to create and modify Azure Active Directory objects such as users and groups.
+
 
 # Naming conventions
 See also [See also https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/considerations/naming-and-tagging](https://docs.microsoft.com/en-us/azure/cloud-adoption-framework/ready/considerations/naming-and-tagging)
