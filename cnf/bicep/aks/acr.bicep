@@ -30,15 +30,17 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
   properties: {
     adminUserEnabled: false
     dataEndpointEnabled: true
+    /*
     networkRuleSet: {
       defaultAction: 'Deny'
       ipRules: [
         {
           action: 'Allow'
-          value: [] // networkRuleSetCidr
+          value: networkRuleSetCidr // []
         }
       ]
     }
+    */
     publicNetworkAccess: 'Enabled'
     zoneRedundancy: 'Disabled'
   }
