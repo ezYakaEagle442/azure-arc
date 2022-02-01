@@ -1,21 +1,40 @@
+// Bicep Templaytes availables at https://github.com/Azure/bicep/tree/main/docs/examples/2
 param appName string = 'demo${uniqueString(resourceGroup().id)}'
+param location string = 'northeurope'
 param rgName string = 'rg-${appName}'
 param dnsPrefix string = 'appinnopinpin'
 param acrName string = 'acr${appName}'
 param clusterName string = 'aks-${appName}'
+param kvName string = 'kv${appName}'
 param aksVersion string = '1.22' //1.22.4
-param location string = 'northeurope'
 param MCnodeRG string = 'rg-MC-${appName}'
 param logAnalyticsWorkspaceName string = 'log-${appName}'
-
 param vnetName string = 'vnet-aks'
 param vnetCidr string = '172.16.0.0/16'
 param aksSubnetCidr string = '172.16.1.0/24'
 
+@description('KV : The object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies.')
+param objectId string 
+
+@description('KV : Application ID of the AKS client making request on behalf of a principal')
+param applicationId string 
+
+@description('The Azure Active Directory tenant ID that should be used for authenticating requests to the Key Vault.')
+param tenantId string = subscription().tenantId
+
+@description('Is KV Network access public ?')
+@allowed([
+  'enabled'
+  'disabled'
+])
+param publicNetworkAccess string = 'enabled'
+
 param sshPublicKey string
 // ssh-keygen -t rsa -b 4096 -N $ssh_passphrase -f ~/.ssh/$ssh_key -C "youremail@groland.grd"
-// Import your SSH keys to Azure KeyVault
 
+@description('Specifies all KV secrets {"secretName":"","secretValue":""} wrapped in a secure object.')
+@secure()
+param secretsObject object
 
 module rg 'rg.bicep' = {
   name: 'rg-bicep'
@@ -33,10 +52,7 @@ module loganalyticsworkspace 'log-analytics-workspace.bicep' = {
     appName: appName
     location: location
     logAnalyticsWorkspaceName: logAnalyticsWorkspaceName
-  }
-  dependsOn: [
-    rg
-  ]   
+  } 
 }
 
 module vnet 'vnet.bicep' = {
@@ -59,6 +75,9 @@ module aksIdentity 'userassignedidentity.bicep' = {
     appName: appName
     location: location
   }
+  dependsOn: [
+    rg
+  ]    
 }
 
 module acr 'acr.bicep' = {
@@ -70,9 +89,20 @@ module acr 'acr.bicep' = {
     location: location
     networkRuleSetCidr: vnet.outputs.aksSubnetAddressPrefix
   }
-  dependsOn: [
-    rg
-  ]  
+}
+
+module kv 'kv.bicep' = {
+  name: 'kv-bicep'
+  // scope: resourceGroup(rg.name)
+  params: {
+    appName: appName
+    location: location
+    kvName: kvName
+    skuName: 'standard'
+    subnetID: vnet.outputs.aksSubnetId
+    publicNetworkAccess: publicNetworkAccess
+    secretsObject: secretsObject
+  }
 }
 
 module roleAssignments 'roleAssignments.bicep' = {
@@ -84,11 +114,6 @@ module roleAssignments 'roleAssignments.bicep' = {
     networkRoleType: 'NetworkContributor'
     acrRoleType: 'AcrPull'
   }
-  dependsOn: [
-    vnet
-    acr
-    aksIdentity
-  ]  
 }
 
 module aks 'aks.bicep' = {
@@ -102,7 +127,7 @@ module aks 'aks.bicep' = {
     nodeRG:MCnodeRG
     subnetID: vnet.outputs.aksSubnetId
     dnsPrefix: dnsPrefix
-    sshRSAPublicKey: sshPublicKey
+    sshRSAPublicKey: resourceId('Microsoft.KeyVault/vaults', kvName).getSecret('sshPublicKey') // sshPublicKey
     logAnalyticsWorkspaceId: loganalyticsworkspace.outputs.logAnalyticsWorkspaceId
     identity: {
       '${aksIdentity.outputs.identityid}' : {}
@@ -112,4 +137,54 @@ module aks 'aks.bicep' = {
     roleAssignments
     loganalyticsworkspace
   ]
+}
+
+// TODO : from Pipeline get aksIdentity objectId
+// https://codingwithtaz.blog/2021/09/08/azure-pipelines-deploy-aks-with-bicep/
+// Todo : create accessPolicies https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/accesspolicies?tabs=bicep
+resource kvAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-06-01-preview' = {
+  name: 'kvAccessPolicies'
+  parent: kv.outputs.vault // resourceId('Microsoft.KeyVault/vaults', kvName)
+  properties: {
+    accessPolicies: [
+      {
+        // applicationId: applicationId
+        objectId: aks.outputs.aksObjectId // XXX TODO XXX
+        tenantId: tenantId
+        permissions: {
+          certificates: [
+            'list'
+            'get'
+            'getissuers'
+            'recover'
+            'restore'
+          ]
+          keys: [
+            'backup'
+            'create'
+            'decrypt'
+            'delete'
+            'encrypt'
+            'get'
+            'getrotationpolicy'
+            'import'
+            'list'
+            'purge'
+            'recover'
+            'restore'
+            'rotate'
+            'setrotationpolicy'
+            'sign'
+            'update'
+            'verify'
+          ]
+          secrets: [
+            'all'
+          ]
+          storage: [
+          ]
+        }
+      }
+    ]
+  }
 }
