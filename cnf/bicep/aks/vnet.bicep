@@ -32,6 +32,12 @@ resource vnet 'Microsoft.Network/virtualNetworks@2021-05-01' = {
                 '*'
               ]
             }
+            {
+              service: 'Microsoft.KeyVault'
+              locations: [
+                '*'
+              ]
+            }            
           ]
           delegations: []
           privateEndpointNetworkPolicies: 'Enabled'

@@ -51,7 +51,6 @@ param nodeRG string = 'rg-MC-${appName}'
 
 
 // https://docs.microsoft.com/en-us/azure/templates/microsoft.containerservice/managedclusters?tabs=bicep
-// Preview with 'Microsoft.ContainerService/managedClusters@2021-10-01-Preview' ? 
 resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
   name: clusterName
   location: location
@@ -88,6 +87,11 @@ resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
       }  
     ]
     // see https://github.com/Azure/azure-rest-api-specs/issues/17563
+    // https://github.com/brwilkinson/AzureDeploymentFramework/blob/main/ADF/bicep/AKS.bicep (main)
+    // https://github.com/brwilkinson/AzureDeploymentFramework/blob/main/ADF/bicep/AKS-AKS.bicep
+    // https://github.com/brwilkinson/AzureDeploymentFramework/blob/main/ADF/tenants/AOA/ACU1.T5.parameters.json#L985
+
+
     addonProfiles: {
       omsagent: {
         config: {
@@ -129,4 +133,4 @@ resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
 
 output controlPlaneFQDN string = aks.properties.fqdn
 // output managedIdentityPrincipalId string = aks.identity.principalId
-
+output aksObjectId string = aks.id
