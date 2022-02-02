@@ -1,5 +1,6 @@
 param vnetId string
 param acrId string
+param acrName string
 param aksPrincipalId string
 
 @allowed([
@@ -18,6 +19,17 @@ param networkRoleType string
 @description('ACR Built-in role to assign')
 param acrRoleType string
 
+param vnetName string
+param subnetName string
+
+resource aksSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-02-01' existing = {
+  name: '${vnetName}/${subnetName}'
+}
+
+resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' existing = {
+  name: acrName
+}
+
 // https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
 var role = {
   Owner: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8e3af657-a8ff-443c-a75c-2fe8c4bcb635'
@@ -31,11 +43,11 @@ var role = {
 }
 
 // https://github.com/Azure/azure-quickstart-templates/blob/master/modules/Microsoft.ManagedIdentity/user-assigned-identity-role-assignment/1.0/main.bicep
-
+// https://github.com/Azure/bicep/discussions/5276
 // Assign ManagedIdentity ID to the "Network contributor" role to AKS VNet
 resource AKSClusterRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(vnetId, networkRoleType , aksPrincipalId)
-  scope: resourceId('Microsoft.Network/virtualNetworks',vnetId) // how to restrict the scope to AKS subnet ?
+  scope: aksSubnet
   properties: {
     roleDefinitionId: role[networkRoleType] // subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
     principalId: aksPrincipalId
@@ -46,7 +58,7 @@ resource AKSClusterRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-
  // acrpull role to assign to the AKS identity: az role assignment create --assignee $sp_id --role acrpull --scope $acr_registry_id
 resource ACRRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(acrId, acrRoleType , aksPrincipalId)
-  scope: resourceId('Microsoft.ContainerRegistry',acrId) // XXX TODO Get acr. Registry ID XXX
+  scope: acr
   properties: {
     roleDefinitionId: role[acrRoleType]
     principalId: aksPrincipalId

@@ -1,10 +1,10 @@
 param vnetName string = 'vnet-aks'
 param vnetCidr string = '172.16.0.0/16 '
 param aksSubnetCidr string = '172.16.1.0/24'
-
+param aksSubnetName string = 'snet-aks'
 
 var aksSubnet = {
-  name: 'snet-aks'
+  name: aksSubnetName
   cidr: aksSubnetCidr
 }
 

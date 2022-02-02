@@ -44,6 +44,7 @@ param agentVMSize string = 'Standard_D2s_v3'
 param linuxAdminUsername string = '${appName}-adm'
 
 @description('Configure all linux machines with the SSH RSA public key string. Your key should include three parts, for example \'ssh-rsa AAAAB...snip...UcyupgH azureuser@linuxvm\'')
+@secure()
 param sshRSAPublicKey string
 
 @description('The AKS cluster Managed ResourceGroup')
@@ -103,7 +104,17 @@ resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
       azurepolicy: {
         enabled: true
       }
+      ingressApplicationGateway: {
+        enabled: true
+        config: {
+          applicationGatewayId: appGatewayResourceId
+          effectiveApplicationGatewayId: appGatewayResourceId
+        }
+      }
       */
+      azureKeyvaultSecretsProvider: {
+        enabled: true
+      }      
     }
     nodeResourceGroup: nodeRG    
     autoUpgradeProfile: {
@@ -132,5 +143,8 @@ resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
 }
 
 output controlPlaneFQDN string = aks.properties.fqdn
+output kubeletIdentity string = aks.properties.identityProfile.kubeletidentity.objectId
+output ingressIdentity string = aks.properties.addonProfiles.ingressApplicationGateway.identity.objectId
+output keyvaultaddonIdentity string = aks.properties.addonProfiles.azureKeyvaultSecretsProvider.identity.objectId
 // output managedIdentityPrincipalId string = aks.identity.principalId
 output aksObjectId string = aks.id

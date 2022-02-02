@@ -10,6 +10,7 @@ param aksVersion string = '1.22' //1.22.4
 param MCnodeRG string = 'rg-MC-${appName}'
 param logAnalyticsWorkspaceName string = 'log-${appName}'
 param vnetName string = 'vnet-aks'
+param subnetName string = 'snet-aks'
 param vnetCidr string = '172.16.0.0/16'
 param aksSubnetCidr string = '172.16.1.0/24'
 
@@ -46,7 +47,7 @@ module rg 'rg.bicep' = {
 }
 
 module loganalyticsworkspace 'log-analytics-workspace.bicep' = {
-  name: 'log-bicep'
+  name: 'log'
   // scope: resourceGroup(rg.name)
   params: {
     appName: appName
@@ -60,6 +61,7 @@ module vnet 'vnet.bicep' = {
   // scope: resourceGroup(rg.name)
   params: {
      vnetName: vnetName
+     aksSubnetName: subnetName
      vnetCidr: vnetCidr
      aksSubnetCidr: aksSubnetCidr
   }
@@ -80,19 +82,22 @@ module aksIdentity 'userassignedidentity.bicep' = {
   ]    
 }
 
-module acr 'acr.bicep' = {
-  name: 'acr-bicep'
-  // scope: resourceGroup(rg.name)
-  params: {
-    appName: appName
-    acrName: acrName
-    location: location
-    networkRuleSetCidr: vnet.outputs.aksSubnetAddressPrefix
+resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
+  name: 'acr'
+  location: location
+  sku: {
+    name: 'Basic'
+  }
+  properties: {
+    adminUserEnabled: false
+    dataEndpointEnabled: false // data endpoint rule is not supported for the SKU Basic
+    publicNetworkAccess: 'Enabled'
+    zoneRedundancy: 'Disabled'
   }
 }
 
-module kv 'kv.bicep' = {
-  name: 'kv-bicep'
+module kvModule 'kv.bicep' = {
+  name: 'kv'
   // scope: resourceGroup(rg.name)
   params: {
     appName: appName
@@ -109,13 +114,22 @@ module roleAssignments 'roleAssignments.bicep' = {
   name: 'role-assignments'
   params: {
     vnetId: vnet.outputs.vnetId
-    acrId: acr.outputs.acrId
+    vnetName: vnetName
+    subnetName: subnetName
+    acrName: acrName
+    acrId: acr.id
     aksPrincipalId: aksIdentity.outputs.principalId
     networkRoleType: 'NetworkContributor'
     acrRoleType: 'AcrPull'
   }
 }
 
+resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
+  name: kvName
+  // scope: resourceGroup('Secret')
+}
+
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/scenarios-secrets
 module aks 'aks.bicep' = {
   name: 'aks'
   // scope: resourceGroup(rg.name)
@@ -127,7 +141,7 @@ module aks 'aks.bicep' = {
     nodeRG:MCnodeRG
     subnetID: vnet.outputs.aksSubnetId
     dnsPrefix: dnsPrefix
-    sshRSAPublicKey: resourceId('Microsoft.KeyVault/vaults', kvName).getSecret('sshPublicKey') // sshPublicKey
+    sshRSAPublicKey: kv.getSecret('sshPublicKey') // sshPublicKey
     logAnalyticsWorkspaceId: loganalyticsworkspace.outputs.logAnalyticsWorkspaceId
     identity: {
       '${aksIdentity.outputs.identityid}' : {}
@@ -143,13 +157,13 @@ module aks 'aks.bicep' = {
 // https://codingwithtaz.blog/2021/09/08/azure-pipelines-deploy-aks-with-bicep/
 // Todo : create accessPolicies https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/accesspolicies?tabs=bicep
 resource kvAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-06-01-preview' = {
-  name: 'kvAccessPolicies'
-  parent: kv.outputs.vault // resourceId('Microsoft.KeyVault/vaults', kvName)
+  name: 'add'
+  parent: kv // resourceId('Microsoft.KeyVault/vaults', kvName)
   properties: {
     accessPolicies: [
       {
         // applicationId: applicationId
-        objectId: aks.outputs.aksObjectId // XXX TODO XXX
+        objectId: aks.outputs.aksObjectId
         tenantId: tenantId
         permissions: {
           certificates: [
