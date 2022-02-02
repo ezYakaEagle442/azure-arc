@@ -30,12 +30,28 @@ param tenantId string = subscription().tenantId
 ])
 param publicNetworkAccess string = 'enabled'
 
-param sshPublicKey string
-// ssh-keygen -t rsa -b 4096 -N $ssh_passphrase -f ~/.ssh/$ssh_key -C "youremail@groland.grd"
 
 @description('Specifies all KV secrets {"secretName":"","secretValue":""} wrapped in a secure object.')
 @secure()
 param secretsObject object
+
+param keyExpiryTime string = 'P90D'
+
+@description('The time duration before key expiring to rotate or notify. It will be in ISO 8601 duration format. Eg: P90D, P1Y')
+param lifetimeActionTriggerBeforeExpiry string = 'P7D'
+
+// DateA: 30/06/2022  00:00:00
+// DateB: 30/06/2022  00:00:00
+// =(DateB-DateA)*24*60*60
+@description('The AKS SSH Keys stoted in KV / Expiry date in seconds since 1970-01-01T00:00:00Z')
+param aksSshKeyExpirationDate int = 1656547200
+
+@description('the AKS cluster SSH key name')
+param aksSshKeyName string = 'kv-ssh-keys-aks${appName}'
+
+// param sshPublicKey string
+// ssh-keygen -t rsa -b 4096 -N $ssh_passphrase -f ~/.ssh/$ssh_key -C "youremail@groland.grd"
+
 
 module rg 'rg.bicep' = {
   name: 'rg-bicep'
@@ -107,6 +123,10 @@ module kvModule 'kv.bicep' = {
     subnetID: vnet.outputs.aksSubnetId
     publicNetworkAccess: publicNetworkAccess
     secretsObject: secretsObject
+    aksSshKeyExpirationDate: aksSshKeyExpirationDate
+    keyExpiryTime: keyExpiryTime
+    lifetimeActionTriggerBeforeExpiry: lifetimeActionTriggerBeforeExpiry
+    aksSshKeyName: aksSshKeyName
   }
 }
 

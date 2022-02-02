@@ -90,6 +90,7 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
 output vault object = kv
 
 // Todo : create keys: https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/keys?tabs=bicep
+// https://docs.microsoft.com/en-us/azure/key-vault/keys/about-keys-details
 resource kvKeys 'Microsoft.KeyVault/vaults/keys@2021-06-01-preview' = {
   name: aksSshKeyName
   parent: kv
@@ -120,6 +121,7 @@ resource kvKeys 'Microsoft.KeyVault/vaults/keys@2021-06-01-preview' = {
     }
   }
 }
+// output createdkeys string = kvKeys.
 
 // See https://docs.microsoft.com/en-us/azure/developer/github/github-key-vault
 // Todo : create secrets : https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/secrets?tabs=bicep

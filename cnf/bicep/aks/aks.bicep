@@ -1,5 +1,5 @@
 // see BICEP samples at https://github.com/ssarwa/Bicep/blob/master/main.bicep
-
+// https://github.com/brwilkinson/AzureDeploymentFramework/blob/main/ADF/bicep/AKS.bicep
 @description('A UNIQUE name')
 @maxLength(25)
 param appName string = 'demo-101-${uniqueString(resourceGroup().id)}'
