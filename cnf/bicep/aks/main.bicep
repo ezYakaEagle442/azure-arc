@@ -177,7 +177,6 @@ module aks 'aks.bicep' = {
   }
   dependsOn: [
     roleAssignments
-    loganalyticsworkspace
   ]
 }
 
@@ -186,7 +185,7 @@ module aks 'aks.bicep' = {
 // Todo : create accessPolicies https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/accesspolicies?tabs=bicep
 resource kvAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-06-01-preview' = {
   name: 'add'
-  parent: kv // resourceId('Microsoft.KeyVault/vaults', kvName)
+  parent: kv
   properties: {
     accessPolicies: [
       {

@@ -3,7 +3,7 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
       "appName": {
-        "value": "demo347pzhzb7day6"
+        "value": "biceppinpin"
       }, 
       "location": {
         "value": "northeurope"
@@ -37,11 +37,11 @@
           "secrets": [
             {
               "secretName": "sshPublicKey",
-              "secretValue": "pub"
+              "secretValue": "PUT HERE YOUR OWN SSH Public Key"
             },
             {
               "secretName": "sshPrivateKey",
-              "secretValue": "prv"
+              "secretValue": "PUT HERE YOUR OWN SSH Private Key"
             }
           ]
         }
