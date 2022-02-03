@@ -100,7 +100,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
     // https://github.com/brwilkinson/AzureDeploymentFramework/blob/main/ADF/bicep/AKS.bicep (main)
     // https://github.com/brwilkinson/AzureDeploymentFramework/blob/main/ADF/bicep/AKS-AKS.bicep
     // https://github.com/brwilkinson/AzureDeploymentFramework/blob/main/ADF/tenants/AOA/ACU1.T5.parameters.json#L985
-
+    // https://docs.microsoft.com/en-us/rest/api/aks/managed-clusters/create-or-update#managedclusteraddonprofile
 
     addonProfiles: {
       omsagent: {
@@ -109,10 +109,14 @@ resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
         }
         enabled: true
       }
-      /*
       azurepolicy: {
         enabled: true
+        //config: {
+        //
+        //}
+        // identity: ?
       }
+      /*
       ingressApplicationGateway: {
         enabled: true
         config: {
@@ -151,9 +155,9 @@ resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
   }
 }
 
+// https://github.com/Azure/azure-rest-api-specs/issues/17563
 output controlPlaneFQDN string = aks.properties.fqdn
 output kubeletIdentity string = aks.properties.identityProfile.kubeletidentity.objectId
-output ingressIdentity string = aks.properties.addonProfiles.ingressApplicationGateway.identity.objectId
 output keyvaultaddonIdentity string = aks.properties.addonProfiles.azureKeyvaultSecretsProvider.identity.objectId
-// output managedIdentityPrincipalId string = aks.identity.principalId
-output aksObjectId string = aks.id
+output managedIdentityPrincipalId string = aks.properties.servicePrincipalProfile.clientId
+// output ingressIdentity string = aks.properties.addonProfiles.ingressApplicationGateway.identity.objectId
