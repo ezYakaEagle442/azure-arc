@@ -1,0 +1,32 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "objectId": {
+        "value": "123"
+      },
+      "applicationId": {
+        "value": "123"
+      },      
+      "exampleInt": {
+        "value": 4
+      },
+      "aksSshKeyName": {
+        "value": "aks-ssh-keys"
+      },
+      "secretsObject": {
+        "value": {
+          "secrets": [
+            {
+              "secretName": "sshPublicKey",
+              "secretValue": "pub"
+            },
+            {
+              "secretName": "sshPrivateKey",
+              "secretValue": "prv"
+            }
+          ]
+        }
+      }      
+    }
+  }
