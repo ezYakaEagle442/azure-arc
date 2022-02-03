@@ -103,7 +103,7 @@ resource kvKeys 'Microsoft.KeyVault/vaults/keys@2021-06-01-preview' = {
     attributes: {
       enabled: true
       exp: aksSshKeyExpirationDate // Expiry date in seconds since 1970-01-01T00:00:00Z.
-      exportable: true // Indicates if the private key can be exported.
+      exportable: false // Indicates if the private key can be exported. Exportable keys must have release policy.
       // nbf: int
     }
     keySize: 4096
@@ -124,6 +124,12 @@ resource kvKeys 'Microsoft.KeyVault/vaults/keys@2021-06-01-preview' = {
         }
       ]
     }
+    /*
+    release_policy: {
+      contentType: 'x'
+      data: ''
+    }
+    */
   }
 }
 
