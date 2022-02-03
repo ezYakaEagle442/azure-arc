@@ -12,22 +12,22 @@
         "value": "appinnopinpin"
       }, 
       "acrName": {
-        "value": "acr$appName"
+        "value": "acr${appName}"
       }, 
       "clusterName": {
-        "value": "aks-$appName"
+        "value": "aks-${appName}"
       }, 
       "kvName": {
-        "value": "kv$appName"
+        "value": "kv-${appName}"
       },     
       "aksVersion": {
         "value": "1.22"
       },         
       "MCnodeRG": {
-        "value": "rg-MC-$appName"
+        "value": "rg-MC-${appName}"
       },         
       "logAnalyticsWorkspaceName": {
-        "value": "log-$appName"
+        "value": "log-${appName}"
       },         
       "vnetName": {
         "value": "vnet-aks"
