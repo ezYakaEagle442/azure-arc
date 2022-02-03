@@ -121,10 +121,10 @@ resource kvKeys 'Microsoft.KeyVault/vaults/keys@2021-06-01-preview' = {
     }
   }
 }
-// output createdkeys string = kvKeys.
 
 // See https://docs.microsoft.com/en-us/azure/developer/github/github-key-vault
 // Todo : create secrets : https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/secrets?tabs=bicep
+
 resource kvSecrets 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = [for secret in secretsObject.secrets: {
   name: secret.secretName
   parent: kv
@@ -138,7 +138,3 @@ resource kvSecrets 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = [for
     value: secret.secretValue
   }
 }]
-
-// var x = kv.getSecret('sshPublic') 
-var x = kvSecrets[0].properties.value
-
