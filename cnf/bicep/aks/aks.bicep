@@ -51,6 +51,16 @@ param sshRSAPublicKey string
 param nodeRG string = 'rg-MC-${appName}'
 
 
+// https://docs.microsoft.com/en-us/azure/templates/microsoft.compute/sshpublickeys?tabs=bicep
+resource sshPublicKey 'Microsoft.Compute/sshPublicKeys@2021-07-01' = {
+  name: 'sshpubkey'
+  location: location
+  properties: {
+    // publicKey: 'string'
+  }
+}
+output spk string = sshPublicKey.properties.publicKey
+
 // https://docs.microsoft.com/en-us/azure/templates/microsoft.containerservice/managedclusters?tabs=bicep
 resource aks 'Microsoft.ContainerService/managedClusters@2021-10-01' = {
   name: clusterName
