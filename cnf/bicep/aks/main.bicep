@@ -62,7 +62,7 @@ module rg 'rg.bicep' = {
 }
 
 module loganalyticsworkspace 'log-analytics-workspace.bicep' = {
-  name: 'log'
+  name: logAnalyticsWorkspaceName
   // scope: resourceGroup(rg.name)
   params: {
     appName: appName
@@ -87,7 +87,7 @@ module vnet 'vnet.bicep' = {
 
 module aksIdentity 'userassignedidentity.bicep' = {
   // scope: resourceGroup(rg.name)
-  name: 'aksIdentity'
+  name: 'aksIdentity-${appName}'
   params: {
     appName: appName
     location: location
@@ -98,7 +98,7 @@ module aksIdentity 'userassignedidentity.bicep' = {
 }
 
 resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
-  name: 'acr'
+  name: acrName
   location: location
   sku: {
     name: 'Basic'
@@ -112,7 +112,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
 }
 
 module kvModule 'kv.bicep' = {
-  name: 'kv'
+  name: kvName
   // scope: resourceGroup(rg.name)
   params: {
     appName: appName
