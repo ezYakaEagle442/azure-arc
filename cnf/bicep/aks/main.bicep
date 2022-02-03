@@ -30,7 +30,6 @@ param tenantId string = subscription().tenantId
 ])
 param publicNetworkAccess string = 'enabled'
 
-
 @description('Specifies all KV secrets {"secretName":"","secretValue":""} wrapped in a secure object.')
 @secure()
 param secretsObject object
@@ -149,6 +148,14 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
   // scope: resourceGroup('Secret')
 }
 
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/key-vault-parameter?tabs=azure-cli
+/*
+The user who deploys the Bicep file must have the Microsoft.KeyVault/vaults/deploy/action permission for the scope 
+of the resource group and key vault. 
+The Owner and Contributor roles both grant this access.
+If you created the key vault, you're the owner and have the permission.
+*/
+
 // https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/scenarios-secrets
 module aks 'aks.bicep' = {
   name: 'aks'
@@ -161,7 +168,7 @@ module aks 'aks.bicep' = {
     nodeRG:MCnodeRG
     subnetID: vnet.outputs.aksSubnetId
     dnsPrefix: dnsPrefix
-    sshRSAPublicKey: kv.getSecret('sshPublicKey') // sshPublicKey
+    sshRSAPublicKey: kv.getSecret('sshPublicKey')
     logAnalyticsWorkspaceId: loganalyticsworkspace.outputs.logAnalyticsWorkspaceId
     identity: {
       '${aksIdentity.outputs.identityid}' : {}
