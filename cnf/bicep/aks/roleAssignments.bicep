@@ -2,6 +2,7 @@ param vnetId string
 param acrId string
 param acrName string
 param aksPrincipalId string
+param kvId string
 
 @allowed([
   'Owner'
@@ -19,8 +20,17 @@ param networkRoleType string
 @description('ACR Built-in role to assign')
 param acrRoleType string
 
+@allowed([
+  'KeyVaultAdministrator'
+  'KeyVaultReader'
+  'KeyVaultSecretsUser'  
+])
+@description('KV Built-in role to assign')
+param kvRoleType string
+
 param vnetName string
 param subnetName string
+param kvName string
 
 resource aksSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-02-01' existing = {
   name: '${vnetName}/${subnetName}'
@@ -28,6 +38,11 @@ resource aksSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-02-01' existi
 
 resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' existing = {
   name: acrName
+}
+
+resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
+  name: kvName
+  // scope: resourceGroup('Secret')
 }
 
 // https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
@@ -41,6 +56,20 @@ var role = {
   KeyVaultReader: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/21090545-7ca7-4776-b22c-e363652d74d2'
   KeyVaultSecretsUser: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6'
 }
+
+// You need Key Vault Administrator permission to be able to see the Keys/Secrets/Certificates in the Azure Portal
+/*
+resource KVAdminRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid(kvId, kvRoleType , subscription().subscriptionId)
+  scope: kv
+  properties: {
+    roleDefinitionId: role[kvRoleType]
+    principalId: subscription().subscriptionId
+    principalType: 'User'
+  }
+}
+*/
+
 
 // https://github.com/Azure/azure-quickstart-templates/blob/master/modules/Microsoft.ManagedIdentity/user-assigned-identity-role-assignment/1.0/main.bicep
 // https://github.com/Azure/bicep/discussions/5276
