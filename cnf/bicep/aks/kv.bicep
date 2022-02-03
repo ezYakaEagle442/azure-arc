@@ -22,6 +22,9 @@ param publicNetworkAccess string = 'enabled'
 ])
 param skuName string = 'standard'
 
+@description('The Azure Active Directory tenant ID that should be used for authenticating requests to the Key Vault.')
+param tenantId string = subscription().tenantId
+
 @description('The AKS subnet ID, such as /subscriptions/subid/resourceGroups/rg-bicep/providers/Microsoft.Network/virtualNetworks/vnet-aks/subnets/snet-aks')
 param subnetID string
 
@@ -55,11 +58,12 @@ param secretsObject object
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
   name: kvName
   location: location
-  sku: {
-    family: 'A'
-    name: skuName
-  }
   properties: {
+    sku: {
+      family: 'A'
+      name: skuName
+    }
+    tenantId: tenantId
     publicNetworkAccess: publicNetworkAccess
     enabledForDeployment: true
     enabledForDiskEncryption: true

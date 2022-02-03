@@ -87,7 +87,7 @@ module vnet 'vnet.bicep' = {
 
 module aksIdentity 'userassignedidentity.bicep' = {
   // scope: resourceGroup(rg.name)
-  name: 'aksIdentity-${appName}'
+  name: 'identity-aks-${appName}'
   params: {
     appName: appName
     location: location
@@ -118,6 +118,7 @@ module kvModule 'kv.bicep' = {
     appName: appName
     location: location
     kvName: kvName
+    tenantId: tenantId
     skuName: 'standard'
     subnetID: vnet.outputs.aksSubnetId
     publicNetworkAccess: publicNetworkAccess
