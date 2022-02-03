@@ -130,6 +130,11 @@ module kvModule 'kv.bicep' = {
   }
 }
 
+resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
+  name: kvName
+  // scope: resourceGroup('Secret')
+}
+
 module roleAssignments 'roleAssignments.bicep' = {
   name: 'role-assignments'
   params: {
@@ -138,16 +143,16 @@ module roleAssignments 'roleAssignments.bicep' = {
     subnetName: subnetName
     acrName: acrName
     acrId: acr.id
+    kvId: kv.id
+    kvName: kvName
     aksPrincipalId: aksIdentity.outputs.principalId
     networkRoleType: 'NetworkContributor'
     acrRoleType: 'AcrPull'
+    kvRoleType: 'KeyVaultAdministrator'
   }
 }
 
-resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
-  name: kvName
-  // scope: resourceGroup('Secret')
-}
+
 
 // https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/key-vault-parameter?tabs=azure-cli
 /*
@@ -190,7 +195,7 @@ resource kvAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-06-01-p
     accessPolicies: [
       {
         // applicationId: applicationId
-        objectId: aks.outputs.aksObjectId
+        objectId: aksIdentity.outputs.principalId
         tenantId: tenantId
         permissions: {
           certificates: [
