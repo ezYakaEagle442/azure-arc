@@ -68,9 +68,9 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
     enabledForDeployment: false // Property to specify whether Azure Virtual Machines are permitted to retrieve certificates stored as secrets from the key vault.
     enabledForDiskEncryption: true // When enabledForDiskEncryption is true, networkAcls.bypass must include \"AzureServices\
     enabledForTemplateDeployment: true
-    enablePurgeProtection: true
     enableRbacAuthorization: true
-    enableSoftDelete: true
+    enablePurgeProtection: false
+    enableSoftDelete: false
     // When enabledForDeployment is true, networkAcls.bypass must include \"AzureServices\"
     networkAcls: {
       bypass: 'AzureServices'
