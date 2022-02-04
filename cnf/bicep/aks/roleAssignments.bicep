@@ -58,18 +58,16 @@ var role = {
 }
 
 // You need Key Vault Administrator permission to be able to see the Keys/Secrets/Certificates in the Azure Portal
-/*
+
 resource KVAdminRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(kvId, kvRoleType , subscription().subscriptionId)
   scope: kv
   properties: {
     roleDefinitionId: role[kvRoleType]
-    principalId: subscription().subscriptionId
-    principalType: 'User'
+    principalId: aksPrincipalId
+    principalType: 'ServicePrincipal'
   }
 }
-*/
-
 
 // https://github.com/Azure/azure-quickstart-templates/blob/master/modules/Microsoft.ManagedIdentity/user-assigned-identity-role-assignment/1.0/main.bicep
 // https://github.com/Azure/bicep/discussions/5276

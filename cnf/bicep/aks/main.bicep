@@ -24,7 +24,6 @@ param location string = 'northeurope'
 param dnsPrefix string = 'appinnopinpin'
 param acrName string = 'acr${appName}'
 param clusterName string = 'aks-${appName}'
-param kvName string = 'kv-${appName}'
 param aksVersion string = '1.22.4' //1.22 Alias in Preview
 param MCnodeRG string = 'rg-MC-${appName}'
 param logAnalyticsWorkspaceName string = 'log-${appName}'
@@ -33,13 +32,16 @@ param subnetName string = 'snet-aks'
 param vnetCidr string = '172.16.0.0/16'
 param aksSubnetCidr string = '172.16.1.0/24'
 
-/*
-@description('KV : The object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies.')
-param objectId string 
+@maxLength(24)
+@description('The name of the KV, must be UNIQUE.  A vault name must be between 3-24 alphanumeric characters.')
+param kvName string = 'kv-${appName}'
 
-@description('KV : Application ID of the AKS client making request on behalf of a principal')
-param applicationId string 
-*/
+@description('Is KV Network access public ?')
+@allowed([
+  'enabled'
+  'disabled'
+])
+param publicNetworkAccess string = 'enabled'
 
 @description('The Azure Active Directory tenant ID that should be used for authenticating requests to the Key Vault.')
 param tenantId string = subscription().tenantId
@@ -99,8 +101,50 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
   }
 }
 
+/*
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
   name: kvName
+}
+*/
+
+// TODO: networkAcls / virtualNetworkRules allow to AKS subnetID
+resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
+  name: kvName
+  location: location
+  properties: {
+    sku: {
+      family: 'A'
+      name: skuName
+    }
+    tenantId: tenantId
+    publicNetworkAccess: publicNetworkAccess
+    enabledForDeployment: false // Property to specify whether Azure Virtual Machines are permitted to retrieve certificates stored as secrets from the key vault.
+    enabledForDiskEncryption: true // When enabledForDiskEncryption is true, networkAcls.bypass must include \"AzureServices\
+    enabledForTemplateDeployment: true
+    enablePurgeProtection: true
+    enableSoftDelete: true
+    enableRbacAuthorization: false // /!\ Preview feature: When true, the key vault will use RBAC for authorization of data actions, and the access policies specified in vault properties will be ignored
+    // When enabledForDeployment is true, networkAcls.bypass must include \"AzureServices\"
+    networkAcls: {
+      bypass: 'AzureServices'
+      defaultAction: 'Deny'
+      /*
+      ipRules: [
+        {
+          value: 'string'
+        }
+      ]
+      */
+      virtualNetworkRules: [
+        {
+          id: vnet.outputs.aksSubnetId
+          ignoreMissingVnetServiceEndpoint: false
+        }
+      ]
+    }
+    softDeleteRetentionInDays: 7 // 30 must be greater or equal than '7' but less or equal than '90'.
+    accessPolicies: []
+  }
 }
 
 module roleAssignments 'roleAssignments.bicep' = {
@@ -116,12 +160,9 @@ module roleAssignments 'roleAssignments.bicep' = {
     aksPrincipalId: aksIdentity.outputs.principalId
     networkRoleType: 'NetworkContributor'
     acrRoleType: 'AcrPull'
-    kvRoleType: 'KeyVaultAdministrator'
+    kvRoleType: 'KeyVaultReader'
   }
 }
-
-
-// TODO: networkAcls / virtualNetworkRules allow to AKS subnetID
 
 
 // TODO : from Pipeline get aksIdentity objectId
