@@ -6,7 +6,7 @@ Microsoft.KeyVault/locations/deletedVaults/purge/action
 
 @description('A UNIQUE name')
 @maxLength(20)
-param appName string
+param appName string = 'iacdemo${uniqueString(resourceGroup().id)}'
 
 @maxLength(24)
 @description('The name of the KV, must be UNIQUE.  A vault name must be between 3-24 alphanumeric characters.')
@@ -32,8 +32,10 @@ param skuName string = 'standard'
 @description('The Azure Active Directory tenant ID that should be used for authenticating requests to the Key Vault.')
 param tenantId string = subscription().tenantId
 
+/*
 @description('The AKS subnet ID, such as /subscriptions/subid/resourceGroups/rg-bicep/providers/Microsoft.Network/virtualNetworks/vnet-aks/subnets/snet-aks')
 param subnetID string
+*/
 
 
 // https://en.wikipedia.org/wiki/ISO_8601#Durations
