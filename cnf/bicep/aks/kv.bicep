@@ -6,7 +6,7 @@ Microsoft.KeyVault/locations/deletedVaults/purge/action
 
 @description('A UNIQUE name')
 @maxLength(25)
-param appName string = 'demo-101-${uniqueString(resourceGroup().id)}'
+param appName string
 
 @description('The name of the KV, must be UNIQUE')
 param kvName string = 'kv-${appName}'
@@ -95,7 +95,7 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
         }
       ]
     }
-    softDeleteRetentionInDays: 1 // 30
+    softDeleteRetentionInDays: 7 // 30 must be greater or equal than '7' but less or equal than '90'.
   }
 }
 output vault object = kv
