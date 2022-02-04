@@ -4,6 +4,8 @@
 az group create --name rg-iac-kv --location northeurope
 az group create --name rg-iac-aks --location northeurope
 
+ssh-keygen -t rsa -b 4096 -N $ssh_passphrase -f ~/.ssh/bicep_key -C "youremail@groland.grd"
+cat ~/.ssh/bicep_key.pub
 
 az deployment group create --name iac-101-kv -f ./kv/kv.bicep -g rg-iac-kv \
     --parameters @./cnf/bicep/kv/parameters.json
