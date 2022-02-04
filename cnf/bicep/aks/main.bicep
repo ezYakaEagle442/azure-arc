@@ -13,8 +13,10 @@
 // Returns a string value containing 36 characters in the format of a globally unique identifier. 
 // /!\ This function can only be used in the default value for a parameter.
 
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-date#utcnow
+// You can only use this function within an expression for the default value of a parameter.
 @maxLength(20)
-param appName string = 'demo${uniqueString(subscription().subscriptionId)}'
+param appName string = 'demo${uniqueString(utcNow())}'
 
 param location string = 'northeurope'
 param rgName string = 'rg-${appName}'
