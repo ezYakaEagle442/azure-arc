@@ -17,7 +17,7 @@
 // You can only use this function within an expression for the default value of a parameter.
 @maxLength(20)
 // to get a unique name each time ==> param appName string = 'demo${uniqueString(resourceGroup().id, deployment().name)}'
-param appName string = 'demo${uniqueString(resourceGroup().id)}'
+param appName string = 'iacdemo${uniqueString(resourceGroup().id)}'
 
 
 param location string = 'northeurope'
@@ -100,10 +100,7 @@ module vnet 'vnet.bicep' = {
      aksSubnetName: subnetName
      vnetCidr: vnetCidr
      aksSubnetCidr: aksSubnetCidr
-  }
-  dependsOn: [
-    rg
-  ]    
+  }   
 }
 
 module aksIdentity 'userassignedidentity.bicep' = {
@@ -112,10 +109,7 @@ module aksIdentity 'userassignedidentity.bicep' = {
   params: {
     appName: appName
     location: location
-  }
-  dependsOn: [
-    rg
-  ]    
+  }  
 }
 
 resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
@@ -132,9 +126,9 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
   }
 }
 
+/*
 module kvModule 'kv.bicep' = {
   name: kvName
-  // scope: resourceGroup(rg.name)
   params: {
     appName: appName
     location: location
@@ -151,6 +145,7 @@ module kvModule 'kv.bicep' = {
     aksSshKeyName: aksSshKeyName
   }
 }
+*/
 
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
   name: kvName
@@ -207,8 +202,6 @@ module aks 'aks.bicep' = {
   ]
 }
 
-/*
-
 // TODO : from Pipeline get aksIdentity objectId
 // https://codingwithtaz.blog/2021/09/08/azure-pipelines-deploy-aks-with-bicep/
 // create accessPolicies https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/accesspolicies?tabs=bicep
@@ -259,4 +252,3 @@ resource kvAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-06-01-p
     ]
   }
 }
-*/

@@ -104,49 +104,11 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
       ]
     }
     softDeleteRetentionInDays: 7 // 30 must be greater or equal than '7' but less or equal than '90'.
-    accessPolicies: [
-      {
-        // applicationId: applicationId
-        objectId: azidentity.properties.principalId
-        tenantId: tenantId
-        permissions: {
-          certificates: [
-            'list'
-            'get'
-            'getissuers'
-            'recover'
-            'restore'
-          ]
-          keys: [
-            'backup'
-            'create'
-            'decrypt'
-            'delete'
-            'encrypt'
-            'get'
-            'getrotationpolicy'
-            'import'
-            'list'
-            'purge'
-            'recover'
-            'restore'
-            'rotate'
-            'setrotationpolicy'
-            'sign'
-            'update'
-            'verify'
-          ]
-          secrets: [
-            'all'
-          ]
-          storage: [
-          ]
-        }
-      }
-    ]
+    accessPolicies: []
   }
 }
-output vault object = kv
+
+// output vault object = kv
 
 // Todo : create keys: https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/keys?tabs=bicep
 // https://docs.microsoft.com/en-us/azure/key-vault/keys/about-keys-details
