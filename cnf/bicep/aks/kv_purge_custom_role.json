@@ -1,0 +1,31 @@
+{
+    "properties": {
+        "roleName": "Key Vault Custom Purge Administrator",
+        "description": "Perform all data plane operations on a key vault and all objects in it, including purge.",
+        "assignableScopes": [
+            "/subscriptions/{subscriptionId1}"
+        ],
+        "permissions": [
+            {
+                "actions": [
+                    "Microsoft.KeyVault/locations/deletedVaults/purge/action",
+                    "Microsoft.Authorization/*/read",
+                    "Microsoft.Insights/alertRules/*",
+                    "Microsoft.Resources/deployments/*",
+                    "Microsoft.Resources/subscriptions/resourceGroups/read",
+                    "Microsoft.Support/*",
+                    "Microsoft.KeyVault/checkNameAvailability/read",
+                    "Microsoft.KeyVault/deletedVaults/read",
+                    "Microsoft.KeyVault/locations/*/read",
+                    "Microsoft.KeyVault/vaults/*/read",
+                    "Microsoft.KeyVault/operations/read"
+                ],
+                "notActions": [],
+                "dataActions": [
+                    "Microsoft.KeyVault/vaults/*"
+                ],
+                "notDataActions": []
+            }
+        ]
+    }
+}
