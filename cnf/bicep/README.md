@@ -1,0 +1,46 @@
+# AKS
+
+```sh
+az group create --name rg-iac-kv --location northeurope
+az group create --name rg-iac-aks --location northeurope
+
+
+az deployment group --name iac-101-aks create -f ./kv/kv.bicep -g rg-iac-kv \
+    --parameters @./cnf/bicep/aks/parameters.json
+
+az deployment group --name iac-101-kv create -f ./aks/main.bicep -g rg-iac-aks \
+    --parameters @./aks/parameters.json
+
+```
+
+# ARO
+
+```sh
+aro_sp_password=$(az ad sp create-for-rbac --name $appName-aro --role contributor --query password -o tsv)
+echo $aro_sp_password > aro_spp.txt
+echo "Service Principal Password saved to ./aro_spp.txt IMPORTANT Keep your password ..." 
+# aro_sp_password=`cat aro_spp.txt`
+#aro_sp_id=$(az ad sp show --id http://$appName-aro --query appId -o tsv) # | jq -r .appId
+#aro_sp_id=$(az ad sp list --all --query "[?appDisplayName=='${appName}-aro'].{appId:appId}" --output tsv)
+aro_sp_id=$(az ad sp list --show-mine --query "[?appDisplayName=='${appName}-aro'].{appId:appId}" -o tsv)
+echo "Service Principal ID:" $aro_sp_id 
+echo $aro_sp_id > aro_spid.txt
+# aro_sp_id=`cat aro_spid.txt`
+az ad sp show --id $aro_sp_id
+
+clientObjectId="$(az ad sp list --filter "AppId eq '$aro_sp_id'" --query "[?appId=='$aro_sp_id'].objectId" -o tsv)"
+
+aroRpObjectId="$(az ad sp list --filter "displayname eq 'Azure Red Hat OpenShift RP'" --query "[?appDisplayName=='Azure Red Hat OpenShift RP'].objectId" -o tsv)"
+
+pull_secret=`cat pull-secret.txt`
+
+az deployment group create --name iac-101-aro \
+    -f ./aro/main.bicep \
+    -g $aro_rg_name \
+    --parameters clientId=$aro_sp_id \
+        clientObjectId=$clientObjectId \
+        clientSecret=$aro_sp_password \
+        aroRpObjectId=$aroRpObjectId \
+        pullSecret=$pull_secret \
+        domain=openshiftrocks
+```
