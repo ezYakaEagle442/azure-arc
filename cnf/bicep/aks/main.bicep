@@ -16,7 +16,7 @@
 // https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-date#utcnow
 // You can only use this function within an expression for the default value of a parameter.
 @maxLength(20)
-param appName string = 'demo${uniqueString(utcNow())}'
+param appName string = 'demo${uniqueString(resourceGroup().id, deployment().name)}'
 
 param location string = 'northeurope'
 param rgName string = 'rg-${appName}'
