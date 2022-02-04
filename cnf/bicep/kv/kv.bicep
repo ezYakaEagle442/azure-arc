@@ -98,10 +98,12 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
       ]
       */
       virtualNetworkRules: [
+        /*
         {
           id: subnetID
           ignoreMissingVnetServiceEndpoint: false
         }
+        */
       ]
     }
     softDeleteRetentionInDays: 7 // 30 must be greater or equal than '7' but less or equal than '90'.
