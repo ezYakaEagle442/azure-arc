@@ -187,7 +187,8 @@ module aks 'aks.bicep' = {
 
 // TODO : from Pipeline get aksIdentity objectId
 // https://codingwithtaz.blog/2021/09/08/azure-pipelines-deploy-aks-with-bicep/
-// Todo : create accessPolicies https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/accesspolicies?tabs=bicep
+// create accessPolicies https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/accesspolicies?tabs=bicep
+// /!\ Preview feature: When enableRbacAuthorization is true in KV, the key vault will use RBAC for authorization of data actions, and the access policies specified in vault properties will be ignored
 resource kvAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-06-01-preview' = {
   name: 'add'
   parent: kv
