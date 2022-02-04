@@ -4,6 +4,8 @@ The user will need the following permissions (at subscription level) to perform 
 Microsoft.KeyVault/locations/deletedVaults/purge/action
 */
 
+// https://argonsys.com/microsoft-cloud/library/dealing-with-deployment-blockers-with-bicep/
+
 @description('A UNIQUE name')
 @maxLength(20)
 param appName string = 'iacdemo${uniqueString(resourceGroup().id)}'
@@ -85,8 +87,8 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
     enabledForDeployment: false // Property to specify whether Azure Virtual Machines are permitted to retrieve certificates stored as secrets from the key vault.
     enabledForDiskEncryption: true // When enabledForDiskEncryption is true, networkAcls.bypass must include \"AzureServices\
     enabledForTemplateDeployment: true
-    enablePurgeProtection: false
-    enableSoftDelete: false
+    enablePurgeProtection: true
+    enableSoftDelete: true
     enableRbacAuthorization: false // /!\ Preview feature: When true, the key vault will use RBAC for authorization of data actions, and the access policies specified in vault properties will be ignored
     // When enabledForDeployment is true, networkAcls.bypass must include \"AzureServices\"
     networkAcls: {
