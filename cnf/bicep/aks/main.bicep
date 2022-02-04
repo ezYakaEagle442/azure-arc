@@ -1,5 +1,13 @@
 // Bicep Templaytes availables at https://github.com/Azure/bicep/tree/main/docs/examples/2
-param appName string = 'demo${uniqueString(resourceGroup().id)}'
+
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-string#guid
+//guid function: The returned value isn't globally unique
+// Unique scoped to deployment for a resource group
+// param appName string = 'demo${guid(resourceGroup().id, deployment().name)}'
+
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-string#newguid
+// Returns a value in the format of a globally unique identifier. This function can only be used in the default value for a parameter.
+param appName string = 'demo${newGuid()}'
 param location string = 'northeurope'
 param rgName string = 'rg-${appName}'
 param dnsPrefix string = 'appinnopinpin'
