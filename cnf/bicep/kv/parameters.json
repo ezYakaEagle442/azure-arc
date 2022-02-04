@@ -7,6 +7,23 @@
       }, 
       "location": {
         "value": "northeurope"
-      }    
+      },
+      "aksSshKeyName": {
+        "value": "aks-ssh-keys"
+      },
+      "secretsObject": {
+        "value": {
+          "secrets": [
+            {
+              "secretName": "sshPublicKey",
+              "secretValue": "PUT HERE YOUR OWN SSH Public Key"
+            },
+            {
+              "secretName": "sshPrivateKey",
+              "secretValue": "PUT HERE YOUR OWN SSH Private Key"
+            }
+          ]
+        }
+      }        
     }
   }
