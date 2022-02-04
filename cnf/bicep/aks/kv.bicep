@@ -5,7 +5,7 @@ Microsoft.KeyVault/locations/deletedVaults/purge/action
 */
 
 @description('A UNIQUE name')
-@maxLength(25)
+@maxLength(42)
 param appName string
 
 @description('The name of the KV, must be UNIQUE')

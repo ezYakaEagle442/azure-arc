@@ -1,7 +1,7 @@
 
 @description('A UNIQUE name')
-@maxLength(25)
-param appName string = 'demo-101-${uniqueString(deployment().name)}'
+@maxLength(42)
+param appName string = '101-${uniqueString(deployment().name)}'
 
 param location string = resourceGroup().location
 

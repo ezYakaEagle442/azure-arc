@@ -1,8 +1,8 @@
 targetScope = 'subscription'
 
 @description('A UNIQUE name')
-@maxLength(25)
-param appName string = 'demo-101-${uniqueString(deployment().location)}'
+@maxLength(42)
+param appName string = '101-${uniqueString(deployment().location)}'
 
 param location string = deployment().location
 param rgName string  = 'rg-${appName}'

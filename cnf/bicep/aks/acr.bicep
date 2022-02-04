@@ -1,8 +1,9 @@
 @description('A UNIQUE name')
-@maxLength(25)
-param appName string = 'demo-101-${uniqueString(deployment().name)}'
+@maxLength(42)
+param appName string = '101-${uniqueString(deployment().name)}'
 
-@description('The name of the ACR, must be UNIQUE')
+// https://docs.microsoft.com/en-us/rest/api/containerregistry/registries/check-name-availability
+@description('The name of the ACR, must be UNIQUE. The name must contain only alphanumeric characters, be globally unique, and between 5 and 50 characters in length.')
 param acrName string = 'acr-${appName}'
 
 @description('The ACR location')
