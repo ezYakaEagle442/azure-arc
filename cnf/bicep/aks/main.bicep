@@ -71,7 +71,7 @@ param aksSshKeyName string = 'kv-ssh-keys-aks${appName}'
 
 
 module rg 'rg.bicep' = {
-  name: 'rg-bicep'
+  name: 'rg-bicep-${appName}'
   scope: subscription()
   params: {
     rgName: rgName
