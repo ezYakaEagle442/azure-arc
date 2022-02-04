@@ -14,7 +14,7 @@
 // /!\ This function can only be used in the default value for a parameter.
 
 @maxLength(20)
-param appName string = 'demo${uniqueString(resourceGroup().id)}'
+param appName string = 'demo${uniqueString(subscription().subscriptionId)}'
 
 param location string = 'northeurope'
 param rgName string = 'rg-${appName}'
