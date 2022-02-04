@@ -16,7 +16,9 @@
 // https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-date#utcnow
 // You can only use this function within an expression for the default value of a parameter.
 @maxLength(20)
-param appName string = 'demo${uniqueString(resourceGroup().id, deployment().name)}'
+// to get a unique name each time ==> param appName string = 'demo${uniqueString(resourceGroup().id, deployment().name)}'
+param appName string = 'demo${uniqueString(resourceGroup().id)}'
+
 
 param location string = 'northeurope'
 param rgName string = 'rg-${appName}'
@@ -69,7 +71,7 @@ param aksSshKeyName string = 'kv-ssh-keys-aks${appName}'
 // param sshPublicKey string
 // ssh-keygen -t rsa -b 4096 -N $ssh_passphrase -f ~/.ssh/$ssh_key -C "youremail@groland.grd"
 
-
+/*
 module rg 'rg.bicep' = {
   name: 'rg-bicep-${appName}'
   scope: subscription()
@@ -78,6 +80,7 @@ module rg 'rg.bicep' = {
     location: location
   }
 }
+*/
 
 module loganalyticsworkspace 'log-analytics-workspace.bicep' = {
   name: logAnalyticsWorkspaceName
