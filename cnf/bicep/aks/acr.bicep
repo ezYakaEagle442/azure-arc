@@ -1,6 +1,6 @@
 @description('A UNIQUE name')
 @maxLength(25)
-param appName string = 'demo-101-${uniqueString(resourceGroup().id)}'
+param appName string = 'demo-101-${uniqueString(deployment().name)}'
 
 @description('The name of the ACR, must be UNIQUE')
 param acrName string = 'acr-${appName}'
