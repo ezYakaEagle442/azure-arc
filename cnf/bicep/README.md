@@ -6,7 +6,7 @@ az group create --name rg-iac-aks --location northeurope
 
 
 az deployment group create --name iac-101-kv -f ./kv/kv.bicep -g rg-iac-kv \
-    --parameters @./cnf/bicep/aks/parameters.json
+    --parameters @./cnf/bicep/kv/parameters.json
 
 az deployment group create --name iac-101-aks -f ./aks/main.bicep -g rg-iac-aks \
     --parameters @./aks/parameters.json
