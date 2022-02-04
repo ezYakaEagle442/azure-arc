@@ -1,3 +1,9 @@
+/*
+If you need to purge KV: https://docs.microsoft.com/en-us/azure/key-vault/general/key-vault-recovery?tabs=azure-portal
+The user will need the following permissions (at subscription level) to perform operations on soft-deleted vaults:
+Microsoft.KeyVault/locations/deletedVaults/purge/action
+*/
+
 @description('A UNIQUE name')
 @maxLength(25)
 param appName string = 'demo-101-${uniqueString(resourceGroup().id)}'
@@ -68,9 +74,9 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
     enabledForDeployment: false // Property to specify whether Azure Virtual Machines are permitted to retrieve certificates stored as secrets from the key vault.
     enabledForDiskEncryption: true // When enabledForDiskEncryption is true, networkAcls.bypass must include \"AzureServices\
     enabledForTemplateDeployment: true
-    enableRbacAuthorization: true
     enablePurgeProtection: false
     enableSoftDelete: false
+    enableRbacAuthorization: false // /!\ Preview feature: When true, the key vault will use RBAC for authorization of data actions, and the access policies specified in vault properties will be ignored
     // When enabledForDeployment is true, networkAcls.bypass must include \"AzureServices\"
     networkAcls: {
       bypass: 'AzureServices'
@@ -89,7 +95,7 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
         }
       ]
     }
-    softDeleteRetentionInDays: 30
+    softDeleteRetentionInDays: 1 // 30
   }
 }
 output vault object = kv
@@ -124,6 +130,7 @@ resource kvKeys 'Microsoft.KeyVault/vaults/keys@2021-06-01-preview' = {
         }
       ]
     }
+    // https://github.com/Azure/azure-rest-api-specs/issues/17657
     /*
     release_policy: {
       contentType: 'x'
