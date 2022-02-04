@@ -43,6 +43,13 @@ param kvName string = 'kv-${appName}'
 ])
 param publicNetworkAccess string = 'enabled'
 
+@description('The KV SKU name')
+@allowed([
+  'premium'
+  'standard'
+])
+param skuName string = 'standard'
+
 @description('The Azure Active Directory tenant ID that should be used for authenticating requests to the Key Vault.')
 param tenantId string = subscription().tenantId
 
@@ -107,7 +114,7 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
 }
 */
 
-// TODO: networkAcls / virtualNetworkRules allow to AKS subnetID
+// At this stage, networkAcls/virtualNetworkRules to allow to AKS subnetID must be configured
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
   name: kvName
   location: location
