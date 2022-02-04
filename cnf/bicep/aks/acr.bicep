@@ -1,5 +1,5 @@
 @description('A UNIQUE name')
-@maxLength(42)
+@maxLength(20)
 param appName string = '101-${uniqueString(deployment().name)}'
 
 // https://docs.microsoft.com/en-us/rest/api/containerregistry/registries/check-name-availability
