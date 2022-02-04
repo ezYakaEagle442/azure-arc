@@ -3,13 +3,13 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
       "appName": {
-        "value": "biceppinpin"
+        "value": "bicepiac"
       }, 
       "location": {
         "value": "northeurope"
       },       
       "dnsPrefix": {
-        "value": "appinnopinpin"
+        "value": "iacrocks"
       },               
       "aksVersion": {
         "value": "1.22.4"
