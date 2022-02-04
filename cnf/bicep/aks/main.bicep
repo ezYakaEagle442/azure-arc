@@ -19,9 +19,8 @@
 // to get a unique name each time ==> param appName string = 'demo${uniqueString(resourceGroup().id, deployment().name)}'
 param appName string = 'iacdemo${uniqueString(resourceGroup().id)}'
 
-
 param location string = 'northeurope'
-param rgName string = 'rg-${appName}'
+// param rgName string = 'rg-${appName}'
 param dnsPrefix string = 'appinnopinpin'
 param acrName string = 'acr${appName}'
 param clusterName string = 'aks-${appName}'
@@ -34,42 +33,16 @@ param subnetName string = 'snet-aks'
 param vnetCidr string = '172.16.0.0/16'
 param aksSubnetCidr string = '172.16.1.0/24'
 
+/*
 @description('KV : The object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies.')
 param objectId string 
 
 @description('KV : Application ID of the AKS client making request on behalf of a principal')
 param applicationId string 
+*/
 
 @description('The Azure Active Directory tenant ID that should be used for authenticating requests to the Key Vault.')
 param tenantId string = subscription().tenantId
-
-@description('Is KV Network access public ?')
-@allowed([
-  'enabled'
-  'disabled'
-])
-param publicNetworkAccess string = 'enabled'
-
-@description('Specifies all KV secrets {"secretName":"","secretValue":""} wrapped in a secure object.')
-@secure()
-param secretsObject object
-
-param keyExpiryTime string = 'P90D'
-
-@description('The time duration before key expiring to rotate or notify. It will be in ISO 8601 duration format. Eg: P90D, P1Y')
-param lifetimeActionTriggerBeforeExpiry string = 'P7D'
-
-// DateA: 30/06/2022  00:00:00
-// DateB: 30/06/2022  00:00:00
-// =(DateB-DateA)*24*60*60
-@description('The AKS SSH Keys stoted in KV / Expiry date in seconds since 1970-01-01T00:00:00Z')
-param aksSshKeyExpirationDate int = 1656547200
-
-@description('the AKS cluster SSH key name')
-param aksSshKeyName string = 'kv-ssh-keys-aks${appName}'
-
-// param sshPublicKey string
-// ssh-keygen -t rsa -b 4096 -N $ssh_passphrase -f ~/.ssh/$ssh_key -C "youremail@groland.grd"
 
 /*
 module rg 'rg.bicep' = {
@@ -126,30 +99,8 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
   }
 }
 
-/*
-module kvModule 'kv.bicep' = {
-  name: kvName
-  params: {
-    appName: appName
-    location: location
-    kvName: kvName
-    azidentityName: aksIdentity.name
-    tenantId: tenantId
-    skuName: 'standard'
-    subnetID: vnet.outputs.aksSubnetId
-    publicNetworkAccess: publicNetworkAccess
-    secretsObject: secretsObject
-    aksSshKeyExpirationDate: aksSshKeyExpirationDate
-    keyExpiryTime: keyExpiryTime
-    lifetimeActionTriggerBeforeExpiry: lifetimeActionTriggerBeforeExpiry
-    aksSshKeyName: aksSshKeyName
-  }
-}
-*/
-
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
   name: kvName
-  // scope: resourceGroup('Secret')
 }
 
 module roleAssignments 'roleAssignments.bicep' = {
@@ -170,37 +121,8 @@ module roleAssignments 'roleAssignments.bicep' = {
 }
 
 
+// TODO: networkAcls / virtualNetworkRules allow to AKS subnetID
 
-// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/key-vault-parameter?tabs=azure-cli
-/*
-The user who deploys the Bicep file must have the Microsoft.KeyVault/vaults/deploy/action permission for the scope 
-of the resource group and key vault. 
-The Owner and Contributor roles both grant this access.
-If you created the key vault, you're the owner and have the permission.
-*/
-
-// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/scenarios-secrets
-module aks 'aks.bicep' = {
-  name: 'aks'
-  // scope: resourceGroup(rg.name)
-  params: {
-    appName: appName
-    clusterName: clusterName
-    k8sVersion: aksVersion
-    location: location
-    nodeRG:MCnodeRG
-    subnetID: vnet.outputs.aksSubnetId
-    dnsPrefix: dnsPrefix
-    sshRSAPublicKey: kv.getSecret('sshPublicKey')
-    logAnalyticsWorkspaceId: loganalyticsworkspace.outputs.logAnalyticsWorkspaceId
-    identity: {
-      '${aksIdentity.outputs.identityid}' : {}
-    }
-  }
-  dependsOn: [
-    roleAssignments
-  ]
-}
 
 // TODO : from Pipeline get aksIdentity objectId
 // https://codingwithtaz.blog/2021/09/08/azure-pipelines-deploy-aks-with-bicep/
@@ -212,7 +134,6 @@ resource kvAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-06-01-p
   properties: {
     accessPolicies: [
       {
-        // applicationId: applicationId
         objectId: aksIdentity.outputs.principalId
         tenantId: tenantId
         permissions: {
@@ -252,3 +173,37 @@ resource kvAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-06-01-p
     ]
   }
 }
+
+
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/key-vault-parameter?tabs=azure-cli
+/*
+The user who deploys the Bicep file must have the Microsoft.KeyVault/vaults/deploy/action permission for the scope 
+of the resource group and key vault. 
+The Owner and Contributor roles both grant this access.
+If you created the key vault, you're the owner and have the permission.
+*/
+
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/scenarios-secrets
+module aks 'aks.bicep' = {
+  name: 'aks'
+  // scope: resourceGroup(rg.name)
+  params: {
+    appName: appName
+    clusterName: clusterName
+    k8sVersion: aksVersion
+    location: location
+    nodeRG:MCnodeRG
+    subnetID: vnet.outputs.aksSubnetId
+    dnsPrefix: dnsPrefix
+    sshRSAPublicKey: kv.getSecret('sshPublicKey')
+    logAnalyticsWorkspaceId: loganalyticsworkspace.outputs.logAnalyticsWorkspaceId
+    identity: {
+      '${aksIdentity.outputs.identityid}' : {}
+    }
+  }
+  dependsOn: [
+    roleAssignments
+    kvAccessPolicies
+  ]
+}
+

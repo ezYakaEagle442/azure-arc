@@ -26,15 +26,6 @@
       "aksSubnetCidr": {
         "value": "172.16.1.0/24"
       },                              
-      "objectId": {
-        "value": "123"
-      },
-      "applicationId": {
-        "value": "123"
-      },      
-      "aksSshKeyName": {
-        "value": "aks-ssh-keys"
-      },
       "secretsObject": {
         "value": {
           "secrets": [

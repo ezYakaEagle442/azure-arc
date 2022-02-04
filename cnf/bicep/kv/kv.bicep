@@ -157,8 +157,8 @@ resource kvKeys 'Microsoft.KeyVault/vaults/keys@2021-06-01-preview' = {
   }
 }
 
-// See https://docs.microsoft.com/en-us/azure/developer/github/github-key-vault
-// Todo : create secrets : https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/secrets?tabs=bicep
+// https://docs.microsoft.com/en-us/azure/developer/github/github-key-vault
+// https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/secrets?tabs=bicep
 
 resource kvSecrets 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = [for secret in secretsObject.secrets: {
   name: secret.secretName
