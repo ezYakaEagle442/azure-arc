@@ -1,13 +1,21 @@
 // Bicep Templaytes availables at https://github.com/Azure/bicep/tree/main/docs/examples/2
 
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-string#uniquestring
+// uniqueString: You provide parameter values that limit the scope of uniqueness for the result. You can specify whether the name is unique down to subscription, resource group, or deployment.
+// The returned value isn't a random string, but rather the result of a hash function. The returned value is 13 characters long. It isn't globally unique
+
 // https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-string#guid
 //guid function: Returns a string value containing 36 characters, isn't globally unique
 // Unique scoped to deployment for a resource group
 // param appName string = 'demo${guid(resourceGroup().id, deployment().name)}'
 
 // https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-string#newguid
-// Returns a string value containing 36 characters in the format of a globally unique identifier. This function can only be used in the default value for a parameter.
-param appName string = 'demo${newGuid()}'
+// Returns a string value containing 36 characters in the format of a globally unique identifier. 
+// /!\ This function can only be used in the default value for a parameter.
+
+@maxLength(20)
+param appName string = 'demo${uniqueString(resourceGroup().id)}'
+
 param location string = 'northeurope'
 param rgName string = 'rg-${appName}'
 param dnsPrefix string = 'appinnopinpin'
