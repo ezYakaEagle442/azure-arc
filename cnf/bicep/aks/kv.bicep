@@ -97,6 +97,7 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
       ]
     }
     softDeleteRetentionInDays: 7 // 30 must be greater or equal than '7' but less or equal than '90'.
+    accessPolicies: [] // this looks required by enablePurgeProtection + enableSoftDelete
   }
 }
 output vault object = kv
