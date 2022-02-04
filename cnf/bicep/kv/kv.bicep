@@ -62,12 +62,13 @@ param aksSshKeyName string = 'kv-ssh-keys-aks${appName}'
 @secure()
 param secretsObject object
 
+/*
 param azidentityName string
 
 resource azidentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' existing = {
   name: azidentityName
 }
-
+*/
 
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
   name: kvName
@@ -82,8 +83,8 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
     enabledForDeployment: false // Property to specify whether Azure Virtual Machines are permitted to retrieve certificates stored as secrets from the key vault.
     enabledForDiskEncryption: true // When enabledForDiskEncryption is true, networkAcls.bypass must include \"AzureServices\
     enabledForTemplateDeployment: true
-    enablePurgeProtection: true
-    enableSoftDelete: true
+    enablePurgeProtection: false
+    enableSoftDelete: false
     enableRbacAuthorization: false // /!\ Preview feature: When true, the key vault will use RBAC for authorization of data actions, and the access policies specified in vault properties will be ignored
     // When enabledForDeployment is true, networkAcls.bypass must include \"AzureServices\"
     networkAcls: {
