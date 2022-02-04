@@ -136,6 +136,7 @@ module kvModule 'kv.bicep' = {
     appName: appName
     location: location
     kvName: kvName
+    azidentityName: aksIdentity.name
     tenantId: tenantId
     skuName: 'standard'
     subnetID: vnet.outputs.aksSubnetId
@@ -203,6 +204,8 @@ module aks 'aks.bicep' = {
   ]
 }
 
+/*
+
 // TODO : from Pipeline get aksIdentity objectId
 // https://codingwithtaz.blog/2021/09/08/azure-pipelines-deploy-aks-with-bicep/
 // create accessPolicies https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/accesspolicies?tabs=bicep
@@ -253,3 +256,4 @@ resource kvAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-06-01-p
     ]
   }
 }
+*/

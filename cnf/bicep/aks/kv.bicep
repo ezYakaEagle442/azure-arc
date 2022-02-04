@@ -62,6 +62,13 @@ param aksSshKeyName string = 'kv-ssh-keys-aks${appName}'
 @secure()
 param secretsObject object
 
+param azidentityName string
+
+resource azidentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' existing = {
+  name: azidentityName
+}
+
+
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
   name: kvName
   location: location
@@ -97,7 +104,46 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
       ]
     }
     softDeleteRetentionInDays: 7 // 30 must be greater or equal than '7' but less or equal than '90'.
-    accessPolicies: [] // this looks required by enablePurgeProtection + enableSoftDelete
+    accessPolicies: [
+      {
+        // applicationId: applicationId
+        objectId: azidentity.properties.principalId
+        tenantId: tenantId
+        permissions: {
+          certificates: [
+            'list'
+            'get'
+            'getissuers'
+            'recover'
+            'restore'
+          ]
+          keys: [
+            'backup'
+            'create'
+            'decrypt'
+            'delete'
+            'encrypt'
+            'get'
+            'getrotationpolicy'
+            'import'
+            'list'
+            'purge'
+            'recover'
+            'restore'
+            'rotate'
+            'setrotationpolicy'
+            'sign'
+            'update'
+            'verify'
+          ]
+          secrets: [
+            'all'
+          ]
+          storage: [
+          ]
+        }
+      }
+    ]
   }
 }
 output vault object = kv
