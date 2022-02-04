@@ -1,4 +1,4 @@
-param appName string = 'demo-101-${uniqueString(resourceGroup().id)}'
+param appName string = 'demo-101-${uniqueString(deployment().name)}'
 
 param logAnalyticsWorkspaceName string = 'log-${appName}'
 param location string = 'northeurope'
