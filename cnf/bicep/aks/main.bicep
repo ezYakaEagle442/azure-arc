@@ -251,7 +251,7 @@ module aks 'aks.bicep' = {
   }
   dependsOn: [
     roleAssignments
-    kvAccessPolicies
+    // kvAccessPolicies
   ]
 }
 
