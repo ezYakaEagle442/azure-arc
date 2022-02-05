@@ -29,6 +29,9 @@ param vnetName string
 param subnetName string
 param kvName string
 
+@description('The name of the KV RG')
+param kvRGName string
+
 resource aksSubnet 'Microsoft.Network/virtualNetworks/subnets@2021-02-01' existing = {
   name: '${vnetName}/${subnetName}'
 }
@@ -39,7 +42,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' existing = {
 
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
   name: kvName
-  // scope: resourceGroup('Secret')
+  scope: resourceGroup(kvRGName)
 }
 
 // https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
@@ -58,7 +61,6 @@ var role = {
 
 resource KVAdminRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(kv.id, kvRoleType , subscription().subscriptionId)
-  scope: kv
   properties: {
     roleDefinitionId: role[kvRoleType]
     principalId: aksPrincipalId
