@@ -1,8 +1,5 @@
-param vnetId string
-param acrId string
 param acrName string
 param aksPrincipalId string
-param kvId string
 
 @allowed([
   'Owner'
@@ -60,7 +57,7 @@ var role = {
 // You need Key Vault Administrator permission to be able to see the Keys/Secrets/Certificates in the Azure Portal
 
 resource KVAdminRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(kvId, kvRoleType , subscription().subscriptionId)
+  name: guid(kv.id, kvRoleType , subscription().subscriptionId)
   scope: kv
   properties: {
     roleDefinitionId: role[kvRoleType]
@@ -73,7 +70,7 @@ resource KVAdminRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-
 // https://github.com/Azure/bicep/discussions/5276
 // Assign ManagedIdentity ID to the "Network contributor" role to AKS VNet
 resource AKSClusterRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(vnetId, networkRoleType , aksPrincipalId)
+  name: guid(aksSubnet.id, networkRoleType , aksPrincipalId)
   scope: aksSubnet
   properties: {
     roleDefinitionId: role[networkRoleType] // subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
@@ -84,7 +81,7 @@ resource AKSClusterRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-
 
  // acrpull role to assign to the AKS identity: az role assignment create --assignee $sp_id --role acrpull --scope $acr_registry_id
 resource ACRRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(acrId, acrRoleType , aksPrincipalId)
+  name: guid(acr.id, acrRoleType , aksPrincipalId)
   scope: acr
   properties: {
     roleDefinitionId: role[acrRoleType]
