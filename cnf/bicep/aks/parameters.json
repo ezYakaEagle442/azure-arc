@@ -5,6 +5,9 @@
       "appName": {
         "value": "bicepiac"
       }, 
+      "kvName": {
+        "value": "kv-bicepiac"
+      },
       "location": {
         "value": "northeurope"
       },       
