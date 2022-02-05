@@ -34,7 +34,10 @@ param aksSubnetCidr string = '172.16.1.0/24'
 
 @maxLength(24)
 @description('The name of the KV, must be UNIQUE.  A vault name must be between 3-24 alphanumeric characters.')
-param kvName string = 'kv-${appName}'
+param kvName string // = 'kv-${appName}'
+
+@description('The name of the KV RG')
+param kvRGName string
 
 @description('Is KV Network access public ?')
 @allowed([
@@ -108,61 +111,38 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
   }
 }
 
-/*
+
+var vNetRules = [
+  {
+    'id': vnet.outputs.aksSubnetId
+    'ignoreMissingVnetServiceEndpoint': false
+  }
+]
+
+// At this stage, must be configured: networkAcls/virtualNetworkRules to allow to AKS subnetID
+module KeyVault '../kv/kv.bicep'= {
+  name: kvName
+  scope: resourceGroup(kvRGName)
+  params: {
+    location: location
+    skuName: skuName
+    tenantId: tenantId
+    publicNetworkAccess: publicNetworkAccess
+    vNetRules: vNetRules
+  }
+}
+
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
   name: kvName
 }
-*/
 
-// At this stage, networkAcls/virtualNetworkRules to allow to AKS subnetID must be configured
-resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
-  name: kvName
-  location: location
-  properties: {
-    sku: {
-      family: 'A'
-      name: skuName
-    }
-    tenantId: tenantId
-    publicNetworkAccess: publicNetworkAccess
-    enabledForDeployment: false // Property to specify whether Azure Virtual Machines are permitted to retrieve certificates stored as secrets from the key vault.
-    enabledForDiskEncryption: true // When enabledForDiskEncryption is true, networkAcls.bypass must include \"AzureServices\
-    enabledForTemplateDeployment: true
-    enablePurgeProtection: true
-    enableSoftDelete: true
-    enableRbacAuthorization: false // /!\ Preview feature: When true, the key vault will use RBAC for authorization of data actions, and the access policies specified in vault properties will be ignored
-    // When enabledForDeployment is true, networkAcls.bypass must include \"AzureServices\"
-    networkAcls: {
-      bypass: 'AzureServices'
-      defaultAction: 'Deny'
-      /*
-      ipRules: [
-        {
-          value: 'string'
-        }
-      ]
-      */
-      virtualNetworkRules: [
-        {
-          id: vnet.outputs.aksSubnetId
-          ignoreMissingVnetServiceEndpoint: false
-        }
-      ]
-    }
-    softDeleteRetentionInDays: 7 // 30 must be greater or equal than '7' but less or equal than '90'.
-    accessPolicies: []
-  }
-}
 
 module roleAssignments 'roleAssignments.bicep' = {
   name: 'role-assignments'
   params: {
-    vnetId: vnet.outputs.vnetId
     vnetName: vnetName
     subnetName: subnetName
     acrName: acrName
-    acrId: acr.id
-    kvId: kv.id
     kvName: kvName
     aksPrincipalId: aksIdentity.outputs.principalId
     networkRoleType: 'NetworkContributor'
