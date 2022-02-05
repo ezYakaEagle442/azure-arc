@@ -34,12 +34,6 @@ param skuName string = 'standard'
 @description('The Azure Active Directory tenant ID that should be used for authenticating requests to the Key Vault.')
 param tenantId string = subscription().tenantId
 
-/*
-@description('The AKS subnet ID, such as /subscriptions/subid/resourceGroups/rg-bicep/providers/Microsoft.Network/virtualNetworks/vnet-aks/subnets/snet-aks')
-param subnetID string
-*/
-
-
 // https://en.wikipedia.org/wiki/ISO_8601#Durations
 /* P is the duration designator (for period) placed at the start of the duration representation.
 Y is the year designator that follows the value for the number of years.
@@ -65,14 +59,6 @@ param aksSshKeyName string = 'kv-ssh-keys-aks${appName}'
 @description('Specifies all KV secrets {"secretName":"","secretValue":""} wrapped in a secure object.')
 @secure()
 param secretsObject object
-
-/*
-param azidentityName string
-
-resource azidentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' existing = {
-  name: azidentityName
-}
-*/
 
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
   name: kvName
@@ -115,9 +101,7 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' = {
   }
 }
 
-// output vault object = kv
-
-// Todo : create keys: https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/keys?tabs=bicep
+// https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/keys?tabs=bicep
 // https://docs.microsoft.com/en-us/azure/key-vault/keys/about-keys-details
 resource kvKeys 'Microsoft.KeyVault/vaults/keys@2021-06-01-preview' = {
   name: aksSshKeyName
