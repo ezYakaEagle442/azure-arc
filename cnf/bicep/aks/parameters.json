@@ -25,20 +25,6 @@
       },         
       "aksSubnetCidr": {
         "value": "172.16.1.0/24"
-      },                              
-      "secretsObject": {
-        "value": {
-          "secrets": [
-            {
-              "secretName": "sshPublicKey",
-              "secretValue": "PUT HERE YOUR OWN SSH Public Key"
-            },
-            {
-              "secretName": "sshPrivateKey",
-              "secretValue": "PUT HERE YOUR OWN SSH Private Key"
-            }
-          ]
-        }
       }      
     }
   }
