@@ -134,6 +134,7 @@ module KeyVault '../kv/kv.bicep'= {
 
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
   name: kvName
+  scope: resourceGroup(kvRGName)
 }
 
 

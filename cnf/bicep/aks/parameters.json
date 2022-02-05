@@ -8,6 +8,9 @@
       "kvName": {
         "value": "kv-bicepiac"
       },
+      "kvRGName": {
+        "value": "rg-bicepiac"
+      },      
       "location": {
         "value": "northeurope"
       },       
