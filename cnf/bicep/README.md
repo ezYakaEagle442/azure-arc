@@ -11,7 +11,7 @@ cat ~/.ssh/bicep_key.pub
 az deployment group create --name iac-101-kv -f ./kv/kv.bicep -g rg-iac-kv \
     --parameters @./cnf/bicep/kv/parameters.json
 
-az deployment group create --name iac-101-kv -f ./kv/kv_sec_key.bicep -g rg-iac-kv \
+az deployment group create --name iac-101-kv-sec-key -f ./kv/kv_sec_key.bicep -g rg-iac-kv \
     --parameters @./cnf/bicep/kv/parameters-sec-key.json
 
 az deployment group create --name iac-101-aks -f ./aks/main.bicep -g rg-iac-aks \
