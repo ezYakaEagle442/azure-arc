@@ -1,5 +1,6 @@
 # AKS
 
+TODO : Use [Pipelines with GitHub Actions](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/deploy-github-actions?tabs=CLI)
 ```sh
 az group create --name rg-iac-kv --location northeurope
 az group create --name rg-iac-aks --location northeurope
