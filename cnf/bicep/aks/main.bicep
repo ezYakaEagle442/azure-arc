@@ -39,6 +39,8 @@ param kvName string // = 'kv-${appName}'
 @description('The name of the KV RG')
 param kvRGName string
 
+param setKVAccessPolicies bool = false
+
 @description('Is KV Network access public ?')
 @allowed([
   'enabled'
@@ -129,15 +131,17 @@ module KeyVault '../kv/kv.bicep'= {
     tenantId: tenantId
     publicNetworkAccess: publicNetworkAccess
     vNetRules: vNetRules
+    AKSIdentity: aksIdentity.outputs.principalId
+    setKVAccessPolicies: true
   }
 }
 
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
-  name: kvName
   scope: resourceGroup(kvRGName)
+  name: kvName
 }
 
-
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/scope-extension-resources
 module roleAssignments 'roleAssignments.bicep' = {
   name: 'role-assignments'
   params: {
@@ -145,6 +149,7 @@ module roleAssignments 'roleAssignments.bicep' = {
     subnetName: subnetName
     acrName: acrName
     kvName: kvName
+    kvRGName: kvRGName
     aksPrincipalId: aksIdentity.outputs.principalId
     networkRoleType: 'NetworkContributor'
     acrRoleType: 'AcrPull'
@@ -152,56 +157,6 @@ module roleAssignments 'roleAssignments.bicep' = {
   }
 }
 
-
-// TODO : from Pipeline get aksIdentity objectId
-// https://codingwithtaz.blog/2021/09/08/azure-pipelines-deploy-aks-with-bicep/
-// create accessPolicies https://docs.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults/accesspolicies?tabs=bicep
-// /!\ Preview feature: When enableRbacAuthorization is true in KV, the key vault will use RBAC for authorization of data actions, and the access policies specified in vault properties will be ignored
-resource kvAccessPolicies 'Microsoft.KeyVault/vaults/accessPolicies@2021-06-01-preview' = {
-  name: 'add'
-  parent: kv
-  properties: {
-    accessPolicies: [
-      {
-        objectId: aksIdentity.outputs.principalId
-        tenantId: tenantId
-        permissions: {
-          certificates: [
-            'list'
-            'get'
-            'getissuers'
-            'recover'
-            'restore'
-          ]
-          keys: [
-            'backup'
-            'create'
-            'decrypt'
-            'delete'
-            'encrypt'
-            'get'
-            'getrotationpolicy'
-            'import'
-            'list'
-            'purge'
-            'recover'
-            'restore'
-            'rotate'
-            'setrotationpolicy'
-            'sign'
-            'update'
-            'verify'
-          ]
-          secrets: [
-            'all'
-          ]
-          storage: [
-          ]
-        }
-      }
-    ]
-  }
-}
 
 
 // https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/key-vault-parameter?tabs=azure-cli
@@ -235,4 +190,3 @@ module aks 'aks.bicep' = {
     // kvAccessPolicies
   ]
 }
-
